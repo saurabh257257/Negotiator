@@ -1,5 +1,8 @@
 """Cost drivers and component templates (starter library for battery / EV manufacturing)."""
 
+# Bump VERSION whenever a template's weights or keywords change: briefs saved earlier are then flagged out of date.
+VERSION = 2
+
 # yahoo: Yahoo Finance symbol where a free series exists; None means a benchmark the user uploads (CSV).
 DRIVERS = {
     "lith":   {"name": "Lithium carbonate",    "type": "Commodity", "yahoo": None},
@@ -22,6 +25,10 @@ DRIVERS = {
 TEMPLATES = [
     {"id": "bms",    "name": "BMS",                       "imp": True,  "w": {"elec": .35, "copper": .10, "resin": .05, "crude": .03},
      "kw": ["bms", "battery management", "balancer"]},
+    # Pure nickel strip is 100% nickel metal, so its price follows nickel. The 85% share is an estimate: the rest is
+    # conversion (rolling, slitting) and margin. Checked first so "Nickel Strip Pure ..." never falls into the busbar template.
+    {"id": "nickel", "name": "Pure nickel strip",         "imp": False, "w": {"nickel": .85},
+     "kw": ["nickel strip pure", "pure nickel"]},
     # busbar/nickel strip is checked before holder: "Nickel Strip ... with holder" is a strip, not a holder
     {"id": "busbar", "name": "Busbar & nickel strip",     "imp": False, "w": {"copper": .60, "nickel": .10},
      "kw": ["busbar", "bus bar", "nickel strip", "series link"]},

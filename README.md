@@ -54,6 +54,10 @@ Helps battery/EV manufacturers renegotiate vendor prices. See [PLAN.md](PLAN.md)
 The Zoho pull and everything above except the optional AI features is plain deterministic code.
 
 ### Known limitations
+- "Nickel Strip Pure" items use the **Pure nickel strip** template: the price follows the nickel price with an
+  assumed 85% share (the rest is conversion and margin). Plated strips still use the copper-heavy busbar
+  template, which is probably wrong for nickel-plated steel. Change `app/catalog.py` and bump `VERSION` so
+  saved briefs show "out of date".
 - Driver weights per template are starter estimates (see `app/catalog.py`), not validated against real BOMs.
 - Only % change of a driver is used; copper/aluminum/crude are USD series, so INR-quoted items do not yet
   include the USD/INR effect unless that driver is in the template.

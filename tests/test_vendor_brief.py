@@ -158,6 +158,30 @@ class VendorFactsTest(unittest.TestCase):
         self.assertEqual(catalog.classify("Nickel Strip Plated 2P(32650) 46.5x0.15 mm CD 34.5 with holder with slit"), "busbar")
         self.assertEqual(catalog.classify("Cell holder 18650 x5"), "holder")
 
+    def test_pure_nickel_strip_follows_the_nickel_price_only(self):
+        from app import catalog
+        for name in ("Nickel Strip Pure 1P 6X0.15mm", "Nickel Strip Pure 2P(32650) 49.5x0.20 mm CD 34.5 with holder", "Pure Nickel Strip 0.15mm"):
+            self.assertEqual(catalog.classify(name), "nickel", name)
+        for name in ("Nickel Strip Plated 1P 6x0.15 mm", "Nickel strip 0.15mm"):          # plated / generic strips keep the busbar template
+            self.assertEqual(catalog.classify(name), "busbar", name)
+        self.assertEqual(catalog.BY_ID["nickel"]["w"], {"nickel": 0.85})
+        wipe()
+        seed([line("n1", "2026-06-01", "N", "Nico", "pn", "Nickel Strip Pure 1P 6X0.15mm", 2800.0, 10, cur="INR"),
+              line("n2", "2026-10-01", "N", "Nico", "pn", "Nickel Strip Pure 1P 6X0.15mm", 2800.0, 10, cur="INR")])
+        driver("nickel", [("2026-06-01", 100), ("2026-10-20", 90)], "123")                # nickel -10%
+        driver("copper", [("2026-06-01", 100), ("2026-10-20", 50)])                        # copper halves: must NOT matter
+        f = negotiation.vendor_facts(tree(), "123", "N", today=TODAY)["items"][0]
+        self.assertEqual(f["template_id"], "nickel")
+        self.assertAlmostEqual(f["justified_price"], 2800 * (1 - 0.85 * 0.10))             # 2800 x 0.915 = 2562
+        self.assertEqual([r["driver"] for r in f["drivers"]], ["Nickel"])
+
+    def test_changing_the_templates_marks_saved_briefs_out_of_date(self):
+        from app import catalog, saved
+        before = saved.stamp("123")
+        with mock.patch.object(catalog, "VERSION", catalog.VERSION + 1):
+            self.assertNotEqual(saved.stamp("123"), before)
+        self.assertEqual(saved.stamp("123"), before)
+
     def test_raised_products_carry_past_trends_of_their_drivers(self):
         vf = negotiation.vendor_facts(tree(), "123", "A", today=TODAY)
         cell = vf["main"]                                              # raised: drivers imply a lower price

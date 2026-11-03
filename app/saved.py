@@ -2,15 +2,15 @@
 import json
 from datetime import datetime, timezone
 
-from . import db
+from . import catalog, db
 
 
 def stamp(mobile: str) -> str:
-    """Fingerprint of the data a brief is built from: the Zoho bill lines and the cost-driver series."""
+    """Fingerprint of what a brief is built from: the Zoho bill lines, the cost-driver series and the templates."""
     with db.connect() as c:
         n, last = c.execute("SELECT COUNT(*), COALESCE(MAX(id),0) FROM bill_lines WHERE mobile=?", (mobile,)).fetchone()
         d, p = c.execute("SELECT COALESCE(MAX(date),''), COUNT(*) FROM driver_points WHERE mobile IN ('', ?)", (mobile,)).fetchone()
-    return f"{n}:{last}:{d}:{p}"
+    return f"{n}:{last}:{d}:{p}:v{catalog.VERSION}"
 
 
 def save(mobile, scope, ref, title, points, source, note, facts, product_id=None) -> int:
