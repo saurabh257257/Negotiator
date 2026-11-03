@@ -17,6 +17,9 @@ node_modules/
 # Local app data: database, encryption key, session secret
 data/
 
+# Office temp/lock files
+~$*
+
 # OS / editor
 .DS_Store
 Thumbs.db
