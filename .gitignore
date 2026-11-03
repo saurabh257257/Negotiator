@@ -11,11 +11,11 @@ node_modules/
 # Secrets and local config
 .env
 .env.*
+!.env.example
 *.key
 
-# Local databases and data dumps
-*.db
-*.sqlite3
+# Local app data: database, encryption key, session secret
+data/
 
 # OS / editor
 .DS_Store

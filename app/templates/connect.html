@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Connect · Negotiator{% endblock %}
+{% block body %}
+<h1>Connect your accounting data</h1>
+<p class="muted">Connect Zoho Books so Negotiator can read your vendor bills and show the rates you paid in the last 6 months, grouped by product and vendor.</p>
+
+<section class="card connector">
+  <div class="logo">Z</div>
+  <div class="grow">
+    <h2>Zoho Books</h2>
+
+    {% if conn %}
+      <p><span class="pill ok">Connected</span> {{ conn.org_name or conn.org_id }} <span class="muted">· {{ conn.dc }} data center</span></p>
+      <p class="muted">Last sync: {{ conn.last_sync_at or 'not yet' }}{% if conn.last_sync_status %} · {{ conn.last_sync_status }}{% endif %}</p>
+      <div class="row">
+        <a class="btn primary" href="{{ url_for('dashboard') }}">View purchase rates</a>
+        <form method="post" action="{{ url_for('sync') }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn">Sync now</button></form>
+        <form method="post" action="{{ url_for('disconnect') }}" onsubmit="return confirm('Disconnect Zoho and delete the data we pulled?')"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn danger">Disconnect</button></form>
+      </div>
+    {% else %}
+      <p>You will sign in on Zoho's own page and approve the access below. Negotiator never sees your Zoho password.</p>
+      <h3>What you are approving (read-only)</h3>
+      <ul class="scopes">
+        {% for scope, text in scopes %}<li><b>{{ text }}</b><br><code>{{ scope }}</code></li>{% endfor %}
+      </ul>
+      <p class="note">We cannot create, change or delete anything in your Zoho account. You can disconnect at any time here, or under Zoho's Connected Apps. Disconnecting deletes the data we pulled.</p>
+
+      <form method="post" action="{{ url_for('oauth_start') }}" class="row">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <div>
+          <label for="dc">Where is your Zoho account hosted?</label>
+          <select id="dc" name="dc">
+            {% for code, label in dcs.items() %}<option value="{{ code }}" {{ 'selected' if code == default_dc }}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <button class="btn primary" {{ '' if configured else 'disabled' }}>Connect Zoho Books</button>
+      </form>
+      <p class="note">Tip: the data center is the ending of the address you use to log in to Zoho, for example books.zoho.<b>in</b>.</p>
+    {% endif %}
+  </div>
+</section>
+
+{% if not configured and not conn %}
+<section class="card warn">
+  <h3>One-time setup needed on the server</h3>
+  <ol>
+    <li>Open the Zoho API Console for your data center (for India: <code>https://api-console.zoho.in</code>) and choose <b>Add Client &rarr; Server-based Applications</b>.</li>
+    <li>Set the <b>Authorized Redirect URI</b> to exactly <code>{{ redirect_uri }}</code>.</li>
+    <li>Copy the Client ID and Client Secret into a <code>.env</code> file (see <code>.env.example</code>) as <code>ZOHO_CLIENT_ID</code> and <code>ZOHO_CLIENT_SECRET</code>, then restart the app.</li>
+  </ol>
+</section>
+{% endif %}
+{% endblock %}

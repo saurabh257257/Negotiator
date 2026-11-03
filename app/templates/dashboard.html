@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Purchase rates · Negotiator{% endblock %}
+{% block body %}
+<div class="row spread">
+  <div>
+    <h1>Purchase rates, last 6 months</h1>
+    <p class="muted">{{ conn.org_name or conn.org_id }} · from Zoho Books bills{% if conn.last_sync_at %} · synced {{ conn.last_sync_at }}{% endif %}</p>
+  </div>
+  <form method="post" action="{{ url_for('sync') }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn" {{ 'disabled' if running }}>Sync now</button></form>
+</div>
+
+<div id="syncbar" class="flash info" {{ '' if running else 'hidden' }}>
+  <b id="syncphase">Syncing…</b> <span id="syncmsg"></span>
+  <div class="progress"><div id="syncfill"></div></div>
+</div>
+{% if conn.last_sync_status and conn.last_sync_status.startswith('Failed') %}
+<div class="flash error">Last sync {{ conn.last_sync_status|lower }}</div>
+{% endif %}
+
+<div class="tiles">
+  <div class="card"><div class="muted">Bills</div><div class="big">{{ stats.bills }}</div></div>
+  <div class="card"><div class="muted">Line items</div><div class="big">{{ stats.lines }}</div></div>
+  <div class="card"><div class="muted">Vendors</div><div class="big">{{ stats.vendors }}</div></div>
+  <div class="card"><div class="muted">Products</div><div class="big">{{ stats.products }}</div></div>
+  <div class="card"><div class="muted">Period</div><div class="mid">{{ stats.first or '–' }} to {{ stats.last or '–' }}</div></div>
+</div>
+
+{% if not groups %}
+  <div class="card">{% if running %}Your bills are being pulled. This page will refresh when done.{% else %}No bills found in the last 6 months. Check that your Zoho Books has bills in this period, then press Sync now.{% endif %}</div>
+{% else %}
+<form method="get" class="toolbar">
+  <input id="q" type="search" placeholder="Search product or vendor" autocomplete="off">
+  <label class="inline">Group by
+    <select name="by" onchange="this.form.submit()">
+      {% for k, label in group_by.items() %}<option value="{{ k }}" {{ 'selected' if k == by }}>{{ label }}</option>{% endfor %}
+    </select>
+  </label>
+</form>
+<p class="note">Zoho Books does not store a product category on bill lines, so products are grouped by the accounting account each bill line was booked to (for example "Raw Materials"). Rates are in the bill's own currency. "Avg" is weighted by quantity.</p>
+
+{% for g in groups %}
+<section class="group" data-group>
+  <h2>{{ g.name }} <span class="muted">· {{ g.products|length }} products · {{ g.n_vendors }} vendors</span></h2>
+  {% for p in g.products %}
+  <details class="prod" data-search="{{ (p.name ~ ' ' ~ p.vendors|map(attribute='vendor')|join(' '))|lower }}">
+    <summary>
+      <span class="pname">{{ p.name }}{% if p.unit %} <span class="muted">/ {{ p.unit }}</span>{% endif %}</span>
+      <span class="muted">{{ p.vendors|length }} vendor{{ '' if p.vendors|length == 1 else 's' }} · {{ p.n_purchases }} purchase{{ '' if p.n_purchases == 1 else 's' }}</span>
+      {% if p.spread > 0.05 %}<span class="pill warn" title="Highest vendor's latest rate vs the lowest, same currency">{{ '%.0f'|format(p.spread) }}% spread between vendors</span>{% endif %}
+    </summary>
+    <div class="xscroll">
+    <table>
+      <thead><tr><th>Vendor</th><th class="n">Purchases</th><th class="n">Latest rate</th><th class="n">Avg</th><th class="n">Min – Max</th><th class="n">Change</th><th>Trend</th></tr></thead>
+      <tbody>
+      {% for v in p.vendors %}
+        <tr>
+          <td><b>{{ v.vendor }}</b> {% if v.best %}<span class="pill ok">lowest</span>{% endif %}{% if v.spread_pct and not v.best %}<span class="pill warn">+{{ '%.0f'|format(v.spread_pct) }}%</span>{% endif %}</td>
+          <td class="n">{{ v.count }}</td>
+          <td class="n"><b>{{ v.currency }} {{ v.latest_rate|money }}</b><div class="muted small">{{ v.latest_date }}</div></td>
+          <td class="n">{{ v.avg|money }}</td>
+          <td class="n">{{ v.min|money }} – {{ v.max|money }}</td>
+          <td class="n {{ 'up' if v.change_pct and v.change_pct > 0.5 else 'down' if v.change_pct and v.change_pct < -0.5 }}">{% if v.change_pct is not none %}{{ '%+.1f'|format(v.change_pct) }}%{% else %}–{% endif %}</td>
+          <td class="trend">{{ sparkline(v.purchases|map(attribute='rate')|list) }}</td>
+        </tr>
+        <tr class="hist"><td colspan="7">
+          <details><summary class="muted small">Purchase history ({{ v.count }})</summary>
+            <table class="inner"><thead><tr><th>Date</th><th>Bill</th><th class="n">Rate</th><th class="n">Qty</th></tr></thead><tbody>
+            {% for h in v.purchases|reverse %}<tr><td>{{ h.date }}</td><td>{{ h.bill }}</td><td class="n">{{ h.rate|money }}</td><td class="n">{{ '%g'|format(h.qty) }}</td></tr>{% endfor %}
+            </tbody></table>
+          </details>
+        </td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </details>
+  {% endfor %}
+</section>
+{% endfor %}
+{% endif %}
+
+<script>
+const q = document.getElementById('q');
+if (q) q.addEventListener('input', () => {
+  const t = q.value.trim().toLowerCase();
+  document.querySelectorAll('.prod').forEach(p => { p.hidden = t && !p.dataset.search.includes(t); if (t && !p.hidden) p.open = true; });
+  document.querySelectorAll('[data-group]').forEach(g => { g.hidden = ![...g.querySelectorAll('.prod')].some(p => !p.hidden); });
+});
+{% if running %}
+(function poll() {
+  fetch('{{ url_for("sync_status") }}').then(r => r.json()).then(s => {
+    if (s.state === 'running') {
+      document.getElementById('syncphase').textContent = s.phase + '…';
+      document.getElementById('syncmsg').textContent = s.total ? s.done + ' of ' + s.total : (s.message || '');
+      document.getElementById('syncfill').style.width = s.total ? (100 * s.done / s.total) + '%' : '8%';
+      setTimeout(poll, 1500);
+    } else { location.reload(); }
+  }).catch(() => setTimeout(poll, 3000));
+})();
+{% endif %}
+</script>
+{% endblock %}

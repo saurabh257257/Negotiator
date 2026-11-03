@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Log in · Negotiator{% endblock %}
+{% block body %}
+<section class="card narrow">
+  <h1>Log in</h1>
+  <p class="muted">Enter your mobile number to continue.</p>
+  <form method="post">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <label for="mobile">Mobile number</label>
+    <input id="mobile" name="mobile" type="tel" inputmode="numeric" autocomplete="tel" autofocus required>
+    <button class="btn primary block">Continue</button>
+  </form>
+  {% if demo %}<p class="note">Demo version: use the test number <b>{{ demo_mobile }}</b>. Real OTP login comes later.</p>{% endif %}
+</section>
+{% endblock %}
