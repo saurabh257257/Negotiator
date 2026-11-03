@@ -36,6 +36,15 @@ Helps battery/EV manufacturers renegotiate vendor prices. See [PLAN.md](PLAN.md)
    order, links to the rate history and talking points, and can be dismissed and restored. The nav shows the
    open-alert count. Alerts are in-app only; no email or digest yet.
 
+10. **Vendor call brief**: the **Vendors** page has a "Talking points" button per vendor. It builds ONE
+    consolidated brief for a single call covering all the products bought from that vendor: the overall
+    concern (spend-weighted gap vs cost drivers), the main product area (largest spend), the other products to
+    raise (ranked by money at stake), products that are fine or have no market data, and one ask. It needs no
+    manual matching: each Zoho item gets a cost-driver template from its name (a template set on a matched
+    component overrides it). A product is only raised if its gap beats your rate-increase threshold, its rate
+    rose, or another vendor sells it cheaper. Works even if only one product has market data. The same button
+    appears on a vendor's page under Purchase rates.
+
 The Zoho pull and everything above except the optional AI features is plain deterministic code.
 
 ### Known limitations

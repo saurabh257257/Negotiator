@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Vendor talking points · Negotiator{% endblock %}
+{% block body %}
+<div class="crumb"><a href="{{ url_for('work.vendors_page') }}">Vendors</a>{% if vf %} › {{ vf.vendor }}{% endif %}</div>
+
+{% if error %}
+<h1>Vendor talking points</h1>
+<div class="card warn">{{ error }} <a href="{{ url_for('work.vendors_page') }}">Back to vendors</a></div>
+{% else %}
+{% set pc = vf.primary_currency %}{% set c = vf.currencies[pc] %}
+<h1>Call brief: {{ vf.vendor }}</h1>
+<p class="muted">One conversation covering all {{ vf.n_products }} product{{ '' if vf.n_products == 1 else 's' }} you bought from this vendor in the last 6 months.</p>
+
+<div class="tiles">
+  <div class="card"><div class="muted">Products bought</div><div class="big">{{ vf.n_products }}</div><div class="muted small">{{ vf.concerns|length }} to raise</div></div>
+  <div class="card"><div class="muted">Spend (6 months)</div><div class="mid">{% for cur, d in vf.currencies.items() %}{{ cur or '-' }} {{ '{:,.0f}'.format(d.spend) }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div></div>
+  <div class="card"><div class="muted">Indicated overpayment on latest orders</div><div class="mid">{% for cur, d in vf.currencies.items() %}{{ cur or '-' }} {{ '{:,.0f}'.format(d.extra) }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div></div>
+  <div class="card"><div class="muted">Overall gap vs drivers</div><div class="big {{ 'up' if c.weighted_gap is not none and c.weighted_gap > 0.01 }}">{{ c.weighted_gap|pct }}</div><div class="muted small">{{ '%.0f'|format(c.data_share * 100) }}% of spend has market data</div></div>
+  <div class="card"><div class="muted">Main area</div><div class="mid">{{ vf.main.component }}</div><div class="muted small">{% if vf.main_share %}{{ '%.0f'|format(vf.main_share * 100) }}% of spend{% endif %}</div></div>
+</div>
+
+<section class="card">
+  <div class="row spread"><h3 style="margin:0">Talking points for the call {% if source == 'ai' %}<span class="pill ok">AI-written</span>{% else %}<span class="pill soon">template-written</span>{% endif %}</h3>
+    <button class="btn sm" id="copy">Copy</button></div>
+  {% if note %}<div class="flash info">AI wording was not used: {{ note }}. Showing the template-written version of the same numbers.</div>{% endif %}
+  <ol id="points" class="points">{% for t in points %}<li>{{ t }}</li>{% endfor %}</ol>
+  <p class="note">Numbers are computed from your Zoho purchases and the cost-driver series. They are estimates from public indicators, not the vendor's actual costs.</p>
+</section>
+
+<section class="card xscroll">
+  <h3>All products from this vendor</h3>
+  <table>
+    <thead><tr><th>Product</th><th class="n">Purchases</th><th class="n">Latest rate</th><th class="n">Change</th><th class="n">Drivers imply</th><th class="n">Gap</th><th class="n">Indicated overpayment</th><th class="n">Share of spend</th><th>Raise?</th></tr></thead>
+    <tbody>
+    {% for f in vf['items'] %}
+      <tr>
+        <td><a href="{{ url_for('dashboard') }}#v={{ vf.vendor_id|urlencode }}&p={{ f.product_key|urlencode }}"><b>{{ f.component }}</b></a><div class="muted small">template: {{ f.template }}</div></td>
+        <td class="n">{{ f.purchases }}</td>
+        <td class="n">{{ f.currency }} {{ f.latest_rate|money }}<div class="muted small">{{ f.latest_date }}</div></td>
+        <td class="n">{{ f.vendor_change|pct }}</td>
+        <td class="n">{% if f.justified_price is not none %}{{ f.currency }} {{ f.justified_price|money }}{% else %}<span class="muted">no data</span>{% endif %}</td>
+        <td class="n {{ 'up' if f.gap is not none and f.gap > 0.01 }}">{{ f.gap|pct }}</td>
+        <td class="n">{% if f.extra %}{{ f.currency }} {{ f.extra|money }}{% else %}–{% endif %}</td>
+        <td class="n">{% if f.spend_share is not none %}{{ '%.0f'|format(f.spend_share * 100) }}%{% else %}–{% endif %}</td>
+        <td>{% if f.concern %}<span class="pill bad">Raise</span>{% elif f.justified_price is none %}<span class="pill soon">No data</span>{% else %}<span class="pill ok">OK</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="note">Each product's cost-driver template is guessed from its name. To change one, add the item as a component under <a href="{{ url_for('work.products') }}">Products</a>, match it to this Zoho item and set the template. "Raise" means the drivers imply a lower price, the rate rose by more than your alert threshold, or another vendor sells it cheaper. Market data comes from <a href="{{ url_for('work.drivers_page') }}">Cost drivers</a>.</p>
+</section>
+<script>
+document.getElementById('copy').addEventListener('click', e => {
+  const t = [...document.querySelectorAll('#points li')].map((l, i) => (i + 1) + '. ' + l.textContent).join('\n');
+  navigator.clipboard && navigator.clipboard.writeText(t); e.target.textContent = 'Copied'; setTimeout(() => e.target.textContent = 'Copy', 1200);
+});
+</script>
+{% endif %}
+{% endblock %}

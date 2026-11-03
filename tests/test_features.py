@@ -116,6 +116,13 @@ class AITest(unittest.TestCase):
         self.assertEqual(out[0]["template"], "bms")
         self.assertIn("untrusted", m.call_args[0][0])  # the system prompt tells the model to treat <data> as data
 
+    def test_truncated_reply_is_reported_clearly(self):
+        msg = mock.Mock(stop_reason="max_tokens", content=[mock.Mock(type="text", text='["cut off')])
+        client = mock.Mock(); client.messages.create.return_value = msg
+        with mock.patch.object(config, "ANTHROPIC_API_KEY", "k"), mock.patch("anthropic.Anthropic", return_value=client):
+            with self.assertRaisesRegex(ai.AIError, "cut off"):
+                ai._complete("s", "u")
+
     def test_not_configured_raises(self):
         with mock.patch.object(config, "ANTHROPIC_API_KEY", ""):
             with self.assertRaises(ai.AIError):

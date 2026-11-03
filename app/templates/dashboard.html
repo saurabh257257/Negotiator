@@ -44,6 +44,7 @@
 const DATA = JSON.parse(document.getElementById('data').textContent);
 const V = Object.fromEntries(DATA.vendors.map(v => [v.id, v]));
 const P = DATA.products;
+const VT = '{{ url_for("work.vendor_talking_points") }}';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num = x => Number(x).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 const pct = x => x == null ? '–' : (x > 0 ? '+' : '') + x.toFixed(1) + '%';
@@ -99,8 +100,9 @@ function vendorDetail(v) {
       <td class="n">${num(s.avg)}</td><td class="n">${num(s.min)} – ${num(s.max)}</td>
       <td class="n ${chgClass(s.change)}">${pct(s.change)}</td><td class="trend">${spark(s.purchases)}</td><td>${tag(s)}</td></tr>`;
   }).join('');
-  return `<div class="card"><h2>${esc(v.name)}</h2>
-    <p class="muted">${v.products.length} product${v.products.length === 1 ? '' : 's'} · ${v.purchases} purchase line${v.purchases === 1 ? '' : 's'} · spend ${spend}</p>
+  return `<div class="card"><div class="row spread"><div><h2>${esc(v.name)}</h2>
+    <p class="muted">${v.products.length} product${v.products.length === 1 ? '' : 's'} · ${v.purchases} purchase line${v.purchases === 1 ? '' : 's'} · spend ${spend}</p></div>
+    <a class="btn primary" href="${VT}?vendor=${encodeURIComponent(v.id)}">Talking points for this vendor</a></div>
     <div class="xscroll"><table><thead><tr><th>Product</th><th class="n">Purchases</th><th class="n">Latest rate</th><th class="n">Avg</th><th class="n">Min – Max</th><th class="n">Change</th><th>Trend</th><th>vs other vendors</th></tr></thead><tbody>${rows}</tbody></table></div>
     <p class="note">Click a product to see its purchase history and how other vendors price it.</p></div>`;
 }

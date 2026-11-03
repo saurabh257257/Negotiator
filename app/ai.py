@@ -18,7 +18,8 @@ def configured() -> bool:
     return bool(config.ANTHROPIC_API_KEY)
 
 
-def _complete(system: str, user: str, max_tokens: int = 2500) -> str:
+def _complete(system: str, user: str, max_tokens: int = 4000) -> str:
+    """max_tokens also covers the model's hidden reasoning, so it must be well above the visible reply length."""
     if not configured():
         raise AIError("AI is not configured (set ANTHROPIC_API_KEY in .env)")
     try:
@@ -26,6 +27,8 @@ def _complete(system: str, user: str, max_tokens: int = 2500) -> str:
         client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
         msg = client.messages.create(model=config.ANTHROPIC_MODEL, max_tokens=max_tokens, system=system,
                                      messages=[{"role": "user", "content": user}])
+        if getattr(msg, "stop_reason", None) == "max_tokens":
+            raise AIError("The AI reply was cut off because it was too long. Please try again.")
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
     except AIError:
         raise
@@ -87,11 +90,27 @@ def extract_components(text: str) -> list[dict]:
     return clean_components(_json(reply))
 
 
+def vendor_talking_points(payload: dict) -> list[str]:
+    """One brief for a single call with a vendor, covering all the products bought from them."""
+    reply = _complete(_SYSTEM, (
+        "A purchase manager will have ONE call with this vendor about ALL the products bought from them, not one call per "
+        "product. Write 7 to 10 short talking points for that call, in this order: (1) the overall concern and the main "
+        "product area, (2) the other products worth raising, most money first, (3) products that are fine or that lack market "
+        "data, (4) one single ask covering everything, (5) a collaborative close. Be firm but collaborative. Use ONLY the "
+        'numbers in the facts; never invent figures or product names. Return a JSON array of strings.\n<data>'
+        + json.dumps(payload, default=str) + "</data>"), max_tokens=6000)
+    pts = _json(reply)
+    pts = [str(p).strip()[:600] for p in pts if str(p).strip()] if isinstance(pts, list) else []
+    if not pts:
+        raise AIError("The AI returned no talking points")
+    return pts[:12]
+
+
 def talking_points(facts: dict) -> list[str]:
     reply = _complete(_SYSTEM, (
         "Write 5 to 7 short talking points a purchase manager can use with their vendor to ask for a fair price. "
         "Be firm but collaborative. Use ONLY the numbers in the facts; never invent figures. "
-        'Return a JSON array of strings.\n<data>' + json.dumps(facts, default=str) + "</data>"), max_tokens=1200)
+        'Return a JSON array of strings.\n<data>' + json.dumps(facts, default=str) + "</data>"), max_tokens=4000)
     pts = _json(reply)
     pts = [str(p).strip()[:500] for p in pts if str(p).strip()] if isinstance(pts, list) else []
     if not pts:

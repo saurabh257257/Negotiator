@@ -200,6 +200,34 @@ def talking_points(pid, cid):
     return render_template("talking.html", p=p, c=c, facts=facts, error=None, points=points, source=source, note=note)
 
 
+# ------------------------------------------------------------------ vendor-level talking points (one call, all products)
+@bp.get("/vendors")
+@login_required
+def vendors_page():
+    mobile = session["mobile"]
+    tree = _tree(mobile)
+    gone = alerts.dismissed(mobile)
+    per: dict = {}
+    for a in alerts.compute(tree, alerts.get_settings(mobile)):
+        if a["key"] not in gone:
+            per[a["vendor_id"]] = per.get(a["vendor_id"], 0) + 1
+    rows = [{"id": v["id"], "name": v["name"], "products": len(v["products"]), "purchases": v["purchases"],
+             "spend": v["spend"], "alerts": per.get(v["id"], 0)} for v in tree["vendors"]]
+    rows.sort(key=lambda r: (-r["alerts"], r["name"].lower()))
+    return render_template("vendors.html", rows=rows)
+
+
+@bp.get("/vendors/talking-points")
+@login_required
+def vendor_talking_points():
+    mobile = session["mobile"]
+    vf = negotiation.vendor_facts(_tree(mobile), mobile, request.args.get("vendor", ""))
+    if "error" in vf:
+        return render_template("vendor_talking.html", vf=None, error=vf["error"], points=[], source=None, note=None)
+    points, source, note = negotiation.vendor_talking_points(vf)
+    return render_template("vendor_talking.html", vf=vf, error=None, points=points, source=source, note=note)
+
+
 # ------------------------------------------------------------------ price-gap alerts (E2)
 _count_cache: dict = {}
 
