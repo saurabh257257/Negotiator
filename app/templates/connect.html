@@ -2,10 +2,31 @@
 {% block title %}Connect · Negotiator{% endblock %}
 {% block body %}
 <h1>Connect your accounting data</h1>
-<p class="muted">Connect Zoho Books so Negotiator can read your vendor bills and show the rates you paid in the last 6 months, grouped by product and vendor.</p>
+<p class="muted">Choose the system your vendor bills live in. Negotiator reads them (read-only) and shows the rates you paid in the last 6 months, grouped by vendor and product.</p>
 
-<section class="card connector">
-  <div class="logo">Z</div>
+<div class="connectors" role="list">
+  {% for c in connectors %}
+  <div class="cc {{ 'ready' if c.ready else 'soon' }}" role="listitem">
+    <div class="logo sm" style="background:{{ c.color }}">{{ c.name[0] }}</div>
+    <div class="grow">
+      <b>{{ c.name }}</b>
+      <div class="muted small">{{ c.blurb }}</div>
+      <div class="cstat">
+      {% if c.ready %}
+        {% if conn %}<span class="pill ok" style="margin-left:0">Connected</span>
+        {% else %}<a class="btn primary sm" href="#zoho">Connect</a>{% endif %}
+      {% else %}
+        <span class="pill soon" style="margin-left:0" title="Not available yet">Coming soon</span>
+      {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<p class="note">Don't see your system? More connectors are being added. Tally, SAP and the others above are not functional yet.</p>
+
+<section class="card connector" id="zoho">
+  <div class="logo" style="background:#d9382b">Z</div>
   <div class="grow">
     <h2>Zoho Books</h2>
 

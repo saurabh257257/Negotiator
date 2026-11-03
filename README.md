@@ -6,8 +6,11 @@ Helps battery/EV manufacturers renegotiate vendor prices. See [PLAN.md](PLAN.md)
 ## What works today
 
 1. **Login** with a mobile number (demo number `123`; real OTP login is not built yet).
-2. **Connect page** with a Zoho Books connector. It lists the read-only permissions first, then sends the
-   user to Zoho's own sign-in and consent page (OAuth 2.0). Negotiator never sees the Zoho password.
+2. **Connect page** showing connectors for the major accounting/ERP platforms (Zoho Books, Tally Prime, SAP,
+   Oracle NetSuite, Microsoft Dynamics 365, QuickBooks, Xero, Busy, Odoo, Sage). **Only Zoho Books works
+   today**; the rest show "Coming soon" (list in `app/connectors.py`). The Zoho connector lists the
+   read-only permissions first, then sends the user to Zoho's own sign-in and consent page (OAuth 2.0).
+   Negotiator never sees the Zoho password.
 3. **Bills sync**: pulls the last ~6 months of Zoho Books **bills** and their line items.
 4. **Purchase rates page**: a vendor tree on the left, with each vendor expanding into its products.
    Selecting a vendor shows all its products with purchase rates (latest, average weighted by quantity,

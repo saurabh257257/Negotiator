@@ -18,6 +18,7 @@ os.environ.update(ZOHO_CLIENT_ID="test-client", ZOHO_CLIENT_SECRET="test-secret"
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app import analysis, create_app, db, zoho  # noqa: E402
+from app.connectors import CONNECTORS  # noqa: E402
 
 
 def days_ago(n):
@@ -114,6 +115,15 @@ class FlowTest(unittest.TestCase):
         self.assertIn("ZohoBooks.bills.READ", html)
         self.assertIn("ZohoBooks.settings.READ", html)
         self.assertNotIn("ZohoBooks.bills.CREATE", html)
+
+    def test_connector_grid_lists_platforms_and_only_zoho_is_functional(self):
+        self.login()
+        html = self.c.get("/connect").get_data(as_text=True)
+        for name in ("Tally Prime", "SAP", "Oracle NetSuite", "QuickBooks", "Xero", "Zoho Books"):
+            self.assertIn(name, html)
+        ready = [c for c in CONNECTORS if c["ready"]]
+        self.assertEqual([c["id"] for c in ready], ["zoho"])
+        self.assertEqual(html.count("Coming soon"), len(CONNECTORS) - 1)
 
     # ---- OAuth
     def start_oauth(self, dc="in"):

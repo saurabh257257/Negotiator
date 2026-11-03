@@ -7,6 +7,7 @@ from functools import wraps
 from flask import Flask, abort, flash, jsonify, redirect, render_template, request, session, url_for
 
 from . import analysis, config, db, zoho
+from .connectors import CONNECTORS
 
 API_DOMAIN_RE = re.compile(r"^https://([a-z0-9-]+\.)*zohoapis\.[a-z.]+$")
 
@@ -77,7 +78,8 @@ def create_app():
     @login_required
     def connect():
         return render_template(
-            "connect.html", conn=connection(), scopes=zoho.SCOPES, dcs=zoho.DC_LABELS, default_dc=config.ZOHO_DC,
+            "connect.html", conn=connection(), connectors=CONNECTORS, scopes=zoho.SCOPES, dcs=zoho.DC_LABELS,
+            default_dc=config.ZOHO_DC,
             configured=bool(config.ZOHO_CLIENT_ID and config.ZOHO_CLIENT_SECRET), redirect_uri=config.ZOHO_REDIRECT_URI)
 
     @app.post("/oauth/start")
