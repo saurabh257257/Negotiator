@@ -1,23 +1,38 @@
 {% extends "base.html" %}
 {% block title %}Talking points · Negotiator{% endblock %}
 {% block body %}
-<div class="crumb"><a href="{{ url_for('work.products') }}">Products</a> › <a href="{{ url_for('work.product', pid=p.id) }}">{{ p.name }}</a> › {{ c.name }}</div>
+<div class="crumb"><a href="{{ url_for('work.talking_hub') }}">Talking points</a> › <a href="{{ url_for('work.product', pid=p.id) }}">{{ p.name }}</a> › {{ c.name }}</div>
 <h1>Talking points: {{ c.name }}</h1>
 
 {% if error %}
 <div class="card warn">{{ error }} <a href="{{ url_for('work.product', pid=p.id) }}">Back to the product</a></div>
 {% else %}
 <div class="row spread">
-  <p class="muted">{{ facts.vendor }} · {{ facts.matched_item }} · template: {{ facts.template }}</p>
-  {% if facts.vendors_available|length > 1 %}
-  <form method="get" class="row"><label class="inline">Vendor
-    <select name="vendor" onchange="this.form.submit()">{% for v in facts.vendors_available %}<option value="{{ v.id }}" {{ 'selected' if v.id == facts.vendor_id }}>{{ v.name }}</option>{% endfor %}</select></label></form>
-  {% endif %}
+  <p class="muted">{% if rec %}{{ rec.facts.vendor }} · {{ rec.facts.matched_item }} · template: {{ rec.facts.template }}{% else %}Not generated yet{% endif %}</p>
+  <form method="post" action="{{ url_for('work.talking_points_generate', pid=p.id, cid=c.id) }}" class="row" style="gap:8px">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    {% if vendors|length > 1 %}<label class="inline">Vendor
+      <select name="vendor">{% for v in vendors %}<option value="{{ v.id }}" {{ 'selected' if rec and v.id == rec.facts.vendor_id }}>{{ v.name }}</option>{% endfor %}</select></label>{% endif %}
+    <button class="btn {{ 'primary' if (not rec) or stale else '' }}">{{ 'Regenerate' if rec else 'Generate talking points' }}</button>
+  </form>
 </div>
+
+{% if not rec %}
+<div class="card"><b>No talking points generated yet for this component.</b>
+  <p class="muted" style="margin-bottom:0">Click <b>Generate talking points</b>. {{ 'It uses a small amount of AI credit; the result is saved so you only do this once.' if ai_on else 'AI is not configured, so template wording is used; the result is saved.' }}</p></div>
+{% else %}
+{% set facts = rec.facts %}{% set points = rec.points %}{% set source = rec.source %}{% set note = rec.note %}
+<div class="flash info">
+  Saved version generated {{ rec.created_at|localtime }} · {{ 'AI-written' if source == 'ai' else 'template-written' }}. Opening this page does not regenerate it.
+  {% if history|length > 1 %}<div class="small" style="margin-top:6px">Versions:
+    {% for h in history %}{% if h.id == rec.id %}<b>{{ h.created_at|localtime }}</b>{% else %}<a href="{{ url_for('work.talking_points', pid=p.id, cid=c.id, id=h.id) }}">{{ h.created_at|localtime }}</a>{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</div>{% endif %}
+</div>
+{% if older %}<div class="flash warn" style="background:var(--amber-soft);color:var(--amber)">You are viewing an older version. <a href="{{ url_for('work.talking_points', pid=p.id, cid=c.id) }}">Show the latest</a></div>{% endif %}
+{% if stale %}<div class="flash warn" style="background:var(--amber-soft);color:var(--amber)">Your Zoho purchases or market data have changed since this was generated. Click <b>Regenerate</b> to refresh the numbers.</div>{% endif %}
 
 <div class="tiles">
   <div class="card"><div class="muted">Latest rate</div><div class="big">{{ facts.currency }} {{ facts.latest_rate|money }}</div><div class="muted small">{{ facts.latest_date }}</div></div>
-  <div class="card"><div class="muted">Justified by drivers today</div><div class="big">{% if facts.justified_price is not none %}{{ facts.currency }} {{ facts.justified_price|money }}{% else %}–{% endif %}</div><div class="muted small">from {{ facts.first_rate|money }} on {{ facts.first_date }}</div></div>
+  <div class="card"><div class="muted">Justified by drivers</div><div class="big">{% if facts.justified_price is not none %}{{ facts.currency }} {{ facts.justified_price|money }}{% else %}–{% endif %}</div><div class="muted small">from {{ facts.first_rate|money }} on {{ facts.first_date }}</div></div>
   <div class="card"><div class="muted">Gap</div><div class="big {{ 'up' if facts.gap is not none and facts.gap > 0.01 }}">{{ facts.gap|pct }}</div></div>
   <div class="card"><div class="muted">Vendor change</div><div class="big">{{ facts.vendor_change|pct }}</div><div class="muted small">{{ facts.purchases }} purchase{{ '' if facts.purchases == 1 else 's' }}</div></div>
   <div class="card"><div class="muted">Market data coverage</div><div class="big">{{ '%.0f'|format(facts.coverage * 100) }}%</div></div>
@@ -47,5 +62,6 @@ document.getElementById('copy').addEventListener('click', e => {
   navigator.clipboard && navigator.clipboard.writeText(t); e.target.textContent = 'Copied'; setTimeout(() => e.target.textContent = 'Copy', 1200);
 });
 </script>
+{% endif %}
 {% endif %}
 {% endblock %}

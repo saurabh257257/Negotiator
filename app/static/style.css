@@ -2,9 +2,11 @@
   --bg:#f6f7f9; --surface:#fff; --surface2:#f1f3f6; --border:#e3e6eb; --text:#16191f; --muted:#667085;
   --accent:#2a5bd7; --accent-soft:#e8eefc; --red:#d92d20; --red-soft:#fdecea; --green:#12805c; --green-soft:#e3f5ee;
   --amber:#b54708; --amber-soft:#fef3e2;
+  --c1:#2a5bd7; --c2:#d9822b; --c3:#12805c; --c4:#8a4fd6; --c5:#667085;   /* chart line colours */
 }
 @media (prefers-color-scheme:dark){
   :root{
+    --c1:#6b93f5; --c2:#f0a050; --c3:#47c79b; --c4:#b48af0; --c5:#9aa3b2;
     --bg:#0f1115; --surface:#171a21; --surface2:#1e222b; --border:#2a2f3a; --text:#e8eaee; --muted:#9aa3b2;
     --accent:#6b93f5; --accent-soft:#1c2744; --red:#f97066; --red-soft:#3a1d1b; --green:#47c79b; --green-soft:#12302a;
     --amber:#f5a85b; --amber-soft:#3a2a14;
@@ -36,6 +38,18 @@ h1{font-size:22px;margin:0 0 6px} h2{font-size:17px;margin:0 0 8px} h3{font-size
 table.comps select{max-width:210px;text-overflow:ellipsis}
 table.comps td:first-child{min-width:190px}
 table.comps td:last-child{min-width:230px}
+.tip{cursor:help;border-bottom:1px dotted var(--muted);outline:none}
+.tip .tip-body{display:none;position:fixed;z-index:50;width:340px;max-width:calc(100vw - 16px);text-align:left;font-weight:400;font-size:12.5px;line-height:1.5;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:0 10px 30px rgba(0,0,0,.22);white-space:normal}
+.tip:hover .tip-body,.tip:focus .tip-body{display:block}
+.tip .tl{display:block;margin-top:4px}
+tr.trendrow td{background:var(--surface2);padding:8px 14px}
+.trendbox{display:flex;gap:22px;flex-wrap:wrap;align-items:center}
+.trendchart{flex:1 1 380px;max-width:560px}
+.trendkey{flex:0 1 260px;font-size:13px;line-height:1.7}
+.trendkey .sw{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:7px;vertical-align:middle}
+.trendkey .sw.dash{background:repeating-linear-gradient(90deg,var(--text) 0 5px,transparent 5px 8px);height:3px}
+svg.trend text{fill:var(--muted);font-size:10px}
+tr.grp td{background:var(--surface2);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:6px 10px}
 .btn.off{opacity:.45;cursor:not-allowed;background:var(--surface2)}
 .badge{background:var(--red);color:#fff;border-radius:99px;font-size:11px;padding:0 7px;font-weight:700;line-height:18px;margin-left:2px}
 .pill.bad{background:var(--red-soft);color:var(--red)}

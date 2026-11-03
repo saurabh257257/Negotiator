@@ -118,10 +118,41 @@ def vendor_facts(tree: dict, mobile: str, vendor_id: str, today: str | None = No
         # A gap smaller than the user's rate-increase threshold is within the noise of an estimate, so it is not raised.
         f["concern"] = bool((f["gap"] is not None and f["gap"] * 100 >= st["increase_pct"]) or f["raised"] or f["cheaper_peer"])
     concerns = sorted((f for f in items if f["concern"]), key=lambda f: (-f["extra"], -(f["gap"] or 0), -(f["vendor_change"] or 0)))
+    for f in concerns:  # past trends of the cost drivers, shown under each product to raise
+        f["trend"], f["price_index"] = trend_data(f, tree, mobile)
     return {"vendor": vendor["name"], "vendor_id": vendor_id, "today": today or date.today().isoformat(),
             "n_products": len(items), "currencies": currencies, "primary_currency": primary,
             "main": main, "main_share": (main["spend"] / total_primary) if total_primary else None,
             "items": items, "concerns": concerns, "settings": st}
+
+
+def _downsample(pts: list, n: int = 60) -> list:
+    if len(pts) <= n:
+        return pts
+    step = len(pts) / n
+    return [pts[int(i * step)] for i in range(n)] + [pts[-1]]
+
+
+def trend_data(f: dict, tree: dict, mobile: str) -> tuple[list, list]:
+    """Each cost driver's price and the vendor's price since the first purchase, all indexed to 100 on that day."""
+    start, end = f["first_date"], f["today"]
+    trend = []
+    for did, w in catalog.BY_ID.get(f["template_id"], catalog.OTHER)["w"].items():
+        ser = drivers.series(did, mobile)
+        base = drivers.value_on(ser, start)
+        if not base:
+            continue
+        pts = [[start, 100.0]] + [[d, v / base * 100] for d, v in ser if start < d <= end]
+        if len(pts) >= 2:
+            trend.append({"driver": catalog.DRIVERS[did]["name"], "weight": w, "points": _downsample(pts),
+                          "change": pts[-1][1] / 100 - 1})
+    by_date = {}
+    for d, _bill, rate, _qty in tree["products"][f["product_key"]]["vendors"][f["vendor_id"]]["purchases"]:
+        by_date[d] = rate / f["first_rate"] * 100 if f["first_rate"] else 100.0
+    price = [[d, v] for d, v in sorted(by_date.items())]
+    if price and price[-1][0] < end:
+        price.append([end, price[-1][1]])
+    return trend, price
 
 
 def ai_payload(vf: dict) -> dict:

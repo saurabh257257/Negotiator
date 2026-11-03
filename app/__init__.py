@@ -49,6 +49,17 @@ def create_app():
         """Fraction (0.05) -> '+5.0%'. None -> en dash."""
         return "–" if value is None else f"{value * 100:+.{digits}f}%"
 
+    from .charts import trend_chart
+    app.jinja_env.globals["trend_chart"] = trend_chart
+
+    @app.template_filter("localtime")
+    def localtime(iso):
+        """Stored UTC timestamp -> the server's local time, e.g. '03 Nov 2026, 02:20 PM'."""
+        try:
+            return datetime.fromisoformat(iso).astimezone().strftime("%d %b %Y, %I:%M %p")
+        except (TypeError, ValueError):
+            return iso or ""
+
     @app.template_filter("pctpts")
     def pctpts(value):
         """Already-a-percentage value (5.0) -> '+5.0%'."""

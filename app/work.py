@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 
-from . import ai, alerts, analysis, catalog, db, drivers, importers, matching, negotiation
+from . import ai, alerts, analysis, catalog, db, drivers, importers, matching, negotiation, saved
 from .auth import login_required
 
 bp = Blueprint("work", __name__)
@@ -104,6 +104,7 @@ def product_delete(pid):
     with db.connect() as conn:
         conn.execute("DELETE FROM components WHERE product_id=?", (pid,))
         conn.execute("DELETE FROM products WHERE id=?", (pid,))
+    saved.forget_component(session["mobile"], product_id=pid)
     flash("Product deleted.", "ok")
     return redirect(url_for("work.products"))
 
@@ -185,25 +186,32 @@ def component_delete(pid, cid):
     _component(pid, cid)
     with db.connect() as conn:
         conn.execute("DELETE FROM components WHERE id=?", (cid,))
+    saved.forget_component(session["mobile"], cid=cid)
     return redirect(url_for("work.product", pid=pid))
 
 
 # ------------------------------------------------------------------ talking points (E7)
-@bp.get("/products/<int:pid>/components/<int:cid>/talking-points")
-@login_required
-def talking_points(pid, cid):
-    p, c = _product(pid), _component(pid, cid)
-    facts = negotiation.build_facts(c, _tree(session["mobile"]), session["mobile"], request.args.get("vendor"))
-    if "error" in facts:
-        return render_template("talking.html", p=p, c=c, facts=None, error=facts["error"], points=[], source=None, note=None)
-    points, source, note = negotiation.talking_points(facts)
-    return render_template("talking.html", p=p, c=c, facts=facts, error=None, points=points, source=source, note=note)
+# Talking points are generated ONLY when the user clicks Generate/Regenerate (a POST), then saved. Opening a page
+# (GET) just shows the last saved version, so it costs nothing and is instant.
+def _pick(mobile, scope, ref):
+    """The saved version asked for with ?id=, otherwise the latest one (or None)."""
+    tid = request.args.get("id", type=int)
+    if tid:
+        rec = saved.get(mobile, tid)
+        if not rec or rec["scope"] != scope or rec["ref"] != str(ref):
+            abort(404)
+        return rec
+    return saved.latest(mobile, scope, ref)
 
 
-# ------------------------------------------------------------------ vendor-level talking points (one call, all products)
-@bp.get("/vendors")
+def _stale(rec, mobile):
+    return bool(rec) and rec["data_stamp"] != saved.stamp(mobile)
+
+
+@bp.get("/talking-points")
 @login_required
-def vendors_page():
+def talking_hub():
+    """The Talking points tab: every vendor with its last saved brief, plus saved product-level ones."""
     mobile = session["mobile"]
     tree = _tree(mobile)
     gone = alerts.dismissed(mobile)
@@ -211,21 +219,92 @@ def vendors_page():
     for a in alerts.compute(tree, alerts.get_settings(mobile)):
         if a["key"] not in gone:
             per[a["vendor_id"]] = per.get(a["vendor_id"], 0) + 1
-    rows = [{"id": v["id"], "name": v["name"], "products": len(v["products"]), "purchases": v["purchases"],
-             "spend": v["spend"], "alerts": per.get(v["id"], 0)} for v in tree["vendors"]]
-    rows.sort(key=lambda r: (-r["alerts"], r["name"].lower()))
-    return render_template("vendors.html", rows=rows)
+    last, now = saved.latest_by_scope(mobile, "vendor"), saved.stamp(mobile)
+    rows = [{"id": v["id"], "name": v["name"], "products": len(v["products"]), "spend": v["spend"],
+             "alerts": per.get(v["id"], 0), "saved": last.get(v["id"]),
+             "stale": bool(last.get(v["id"])) and last[v["id"]]["data_stamp"] != now} for v in tree["vendors"]]
+    rows.sort(key=lambda r: (r["saved"] is None, -r["alerts"], r["name"].lower()))
+    with db.connect() as conn:
+        pnames = {r["id"]: r["name"] for r in conn.execute("SELECT id, name FROM products WHERE mobile=?", (mobile,))}
+    comps = [{**m, "product": pnames.get(m["product_id"], ""), "stale": m["data_stamp"] != now}
+             for m in saved.latest_by_scope(mobile, "component").values()]
+    comps.sort(key=lambda m: m["created_at"], reverse=True)
+    return render_template("talking_hub.html", rows=rows, comps=comps, ai_on=ai.configured())
+
+
+# --- vendor level: ONE brief for a call covering all the products bought from the vendor
+@bp.get("/talking-points/vendor")
+@login_required
+def vendor_talking_points():
+    mobile = session["mobile"]
+    vid = request.args.get("vendor", "")
+    rec = _pick(mobile, "vendor", vid)
+    vendor = next((v for v in _tree(mobile)["vendors"] if v["id"] == vid), None)
+    if not vendor and not rec:
+        return render_template("vendor_talking.html", rec=None, vid=vid, name=None, n_products=0, error="That vendor was not found in your Zoho purchases.",
+                               history=[], stale=False, older=False, ai_on=ai.configured())
+    latest = saved.latest(mobile, "vendor", vid)
+    return render_template("vendor_talking.html", rec=rec, vid=vid, name=vendor["name"] if vendor else rec["title"],
+                           n_products=len(vendor["products"]) if vendor else 0, error=None,
+                           history=saved.history(mobile, "vendor", vid), stale=_stale(rec, mobile),
+                           older=bool(rec and latest and rec["id"] != latest["id"]), ai_on=ai.configured())
+
+
+@bp.post("/talking-points/vendor")
+@login_required
+def vendor_talking_generate():
+    mobile = session["mobile"]
+    vid = request.form.get("vendor", "")
+    vf = negotiation.vendor_facts(_tree(mobile), mobile, vid)
+    if "error" in vf:
+        flash(vf["error"], "error")
+        return redirect(url_for("work.talking_hub"))
+    points, source, note = negotiation.vendor_talking_points(vf)
+    saved.save(mobile, "vendor", vid, vf["vendor"], points, source, note, vf)
+    flash("Talking points generated and saved.", "ok")
+    return redirect(url_for("work.vendor_talking_points", vendor=vid))
+
+
+@bp.get("/vendors")
+@login_required
+def vendors_page():
+    return redirect(url_for("work.talking_hub"))
 
 
 @bp.get("/vendors/talking-points")
 @login_required
-def vendor_talking_points():
+def vendors_talking_legacy():
+    return redirect(url_for("work.vendor_talking_points", vendor=request.args.get("vendor", "")))
+
+
+# --- component level: talking points for one product line
+@bp.get("/products/<int:pid>/components/<int:cid>/talking-points")
+@login_required
+def talking_points(pid, cid):
     mobile = session["mobile"]
-    vf = negotiation.vendor_facts(_tree(mobile), mobile, request.args.get("vendor", ""))
-    if "error" in vf:
-        return render_template("vendor_talking.html", vf=None, error=vf["error"], points=[], source=None, note=None)
-    points, source, note = negotiation.vendor_talking_points(vf)
-    return render_template("vendor_talking.html", vf=vf, error=None, points=points, source=source, note=note)
+    p, c = _product(pid), _component(pid, cid)
+    rec = _pick(mobile, "component", cid)
+    now = negotiation.build_facts(c, _tree(mobile), mobile)  # numbers only (no AI): says whether generation is possible
+    latest = saved.latest(mobile, "component", cid)
+    return render_template("talking.html", p=p, c=c, rec=rec, error=None if rec else now.get("error"),
+                           vendors=now.get("vendors_available", []), history=saved.history(mobile, "component", cid),
+                           stale=_stale(rec, mobile), older=bool(rec and latest and rec["id"] != latest["id"]), ai_on=ai.configured())
+
+
+@bp.post("/products/<int:pid>/components/<int:cid>/talking-points")
+@login_required
+def talking_points_generate(pid, cid):
+    mobile = session["mobile"]
+    _product(pid)
+    c = _component(pid, cid)
+    facts = negotiation.build_facts(c, _tree(mobile), mobile, request.form.get("vendor") or None)
+    if "error" in facts:
+        flash(facts["error"], "error")
+        return redirect(url_for("work.talking_points", pid=pid, cid=cid))
+    points, source, note = negotiation.talking_points(facts)
+    saved.save(mobile, "component", cid, c["name"], points, source, note, facts, product_id=pid)
+    flash("Talking points generated and saved.", "ok")
+    return redirect(url_for("work.talking_points", pid=pid, cid=cid))
 
 
 # ------------------------------------------------------------------ price-gap alerts (E2)

@@ -20,7 +20,8 @@ def wipe():
     assert config.DB_PATH.parent != config.ROOT / "data", "tests must use a temporary NEGOTIATOR_DATA_DIR"
     db.init()
     with db.connect() as c:
-        for t in ("components", "products", "bill_lines", "driver_points", "connections", "alert_settings", "alert_dismissed"):
+        for t in ("components", "products", "bill_lines", "driver_points", "connections", "alert_settings", "alert_dismissed",
+                  "talking_points"):
             c.execute(f"DELETE FROM {t}")
 
 

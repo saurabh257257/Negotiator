@@ -24,7 +24,8 @@ def wipe():
     assert config.DB_PATH.parent != config.ROOT / "data", "tests must use a temporary NEGOTIATOR_DATA_DIR"
     db.init()
     with db.connect() as c:
-        for t in ("components", "products", "bill_lines", "driver_points", "connections", "alert_settings", "alert_dismissed"):
+        for t in ("components", "products", "bill_lines", "driver_points", "connections", "alert_settings", "alert_dismissed",
+                  "talking_points"):
             c.execute(f"DELETE FROM {t}")
 
 
@@ -157,65 +158,32 @@ class VendorFactsTest(unittest.TestCase):
         self.assertEqual(catalog.classify("Nickel Strip Plated 2P(32650) 46.5x0.15 mm CD 34.5 with holder with slit"), "busbar")
         self.assertEqual(catalog.classify("Cell holder 18650 x5"), "holder")
 
+    def test_raised_products_carry_past_trends_of_their_drivers(self):
+        vf = negotiation.vendor_facts(tree(), "123", "A", today=TODAY)
+        cell = vf["main"]                                              # raised: drivers imply a lower price
+        lith = next(t for t in cell["trend"] if t["driver"] == "Lithium carbonate")
+        self.assertEqual(lith["points"][0], ["2026-06-01", 100.0])      # every line starts at 100 on the first purchase
+        self.assertAlmostEqual(lith["points"][-1][1], 80.0)             # lithium fell 20% since then
+        self.assertAlmostEqual(lith["change"], -0.2)
+        self.assertEqual(cell["price_index"][0], ["2026-06-01", 100.0])
+        self.assertEqual(cell["price_index"][-1], [TODAY, 104.0])       # your price: 100 -> 104, extended to today
+        ok = next(f for f in vf["items"] if f["component"] == "Copper busbar 3x20")
+        self.assertNotIn("trend", ok)                                    # trends only for the products to raise
+
+    def test_trend_chart_draws_lines_and_handles_no_data(self):
+        from app import charts
+        self.assertEqual(str(charts.trend_chart([], [])), "")
+        svg = str(charts.trend_chart([{"driver": "Copper <b>", "points": [["2026-06-01", 100.0], ["2026-10-20", 90.0]], "change": -0.1}],
+                                     [["2026-06-01", 100.0], ["2026-10-20", 100.0]]))
+        self.assertIn("<polyline", svg); self.assertIn("2026-06-01", svg); self.assertIn("-10.0%", svg)
+        self.assertNotIn("<b>", svg)                                      # driver names are escaped
+
     def test_unknown_vendor_and_ai_payload_is_numbers_only(self):
         self.assertIn("error", negotiation.vendor_facts(tree(), "123", "nope"))
         payload = negotiation.ai_payload(negotiation.vendor_facts(tree(), "123", "A", today=TODAY))
         self.assertEqual(payload["vendor"], "Alpha")
         self.assertIn("main_area", payload)
         self.assertLessEqual(len(payload["products"]), 12)
-
-
-class VendorRoutesTest(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.app = create_app(); cls.app.testing = True
-
-    def setUp(self):
-        wipe(); seed(alpha_rows()); alpha_drivers()
-        self.c = self.app.test_client()
-        t = self.c.get("/login").get_data(as_text=True).split('name="csrf" value="')[1].split('"')[0]
-        self.c.post("/login", data={"mobile": "123", "csrf": t})
-
-    def test_login_required(self):
-        anon = self.app.test_client()
-        self.assertEqual(anon.get("/vendors").status_code, 302)
-        self.assertEqual(anon.get("/vendors/talking-points?vendor=A").status_code, 302)
-
-    def test_vendor_list_has_a_button_per_vendor(self):
-        html = self.c.get("/vendors").get_data(as_text=True)
-        self.assertIn("Alpha", html); self.assertIn("Beta", html)
-        self.assertEqual(html.count("vendors/talking-points?vendor="), 2)
-
-    def test_vendor_page_template_written_when_no_ai(self):
-        with mock.patch.object(config, "ANTHROPIC_API_KEY", ""):
-            html = self.c.get("/vendors/talking-points?vendor=A").get_data(as_text=True)
-        self.assertIn("Call brief: Alpha", html)
-        self.assertIn("all 4 products", html)
-        self.assertIn("template-written", html)
-        self.assertIn("AI wording was not used", html)
-        for name in ("LFP cell", "Mystery widget", "Copper busbar 3x20", "Cell holder"):
-            self.assertIn(name, html)                                   # every product is listed in the table
-        self.assertIn('class="pill bad">Raise', html)
-
-    def test_vendor_page_uses_ai_and_reports_failures(self):
-        with mock.patch.object(config, "ANTHROPIC_API_KEY", "k"), mock.patch.object(ai, "vendor_talking_points", return_value=["AI point one"]):
-            html = self.c.get("/vendors/talking-points?vendor=A").get_data(as_text=True)
-        self.assertIn("AI-written", html); self.assertIn("AI point one", html)
-        with mock.patch.object(config, "ANTHROPIC_API_KEY", "k"), mock.patch.object(ai, "vendor_talking_points", side_effect=ai.AIError("credit too low")):
-            html = self.c.get("/vendors/talking-points?vendor=A").get_data(as_text=True)
-        self.assertIn("credit too low", html); self.assertIn("template-written", html)
-
-    def test_unknown_vendor_is_handled(self):
-        self.assertIn("not found", self.c.get("/vendors/talking-points?vendor=zzz").get_data(as_text=True))
-        self.assertIn("not found", self.c.get("/vendors/talking-points").get_data(as_text=True))
-
-    def test_rates_page_links_to_the_vendor_brief(self):
-        from app.crypto import encrypt
-        with db.connect() as c:  # the rates page needs a connected Zoho account
-            c.execute("INSERT INTO connections VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", ("123", "in", "https://accounts.zoho.in",
-                      "https://www.zohoapis.in", "1", "Org", encrypt("a"), encrypt("r"), 9e9, "x", None, None))
-        html = self.c.get("/dashboard").get_data(as_text=True)
-        self.assertIn("vendors/talking-points", html)
 
 
 if __name__ == "__main__":

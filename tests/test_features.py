@@ -23,7 +23,7 @@ def wipe():
     assert config.DB_PATH.parent != config.ROOT / "data", "tests must use a temporary NEGOTIATOR_DATA_DIR"
     db.init()
     with db.connect() as c:
-        for t in ("components", "products", "bill_lines", "driver_points", "connections"):
+        for t in ("components", "products", "bill_lines", "driver_points", "connections", "talking_points"):
             c.execute(f"DELETE FROM {t}")
 
 
@@ -294,16 +294,21 @@ class RoutesTest(unittest.TestCase):
         with db.connect() as c:
             cid = c.execute("SELECT id FROM components").fetchone()["id"]
         url = f"/products/{pid}/components/{cid}/talking-points"
-        self.assertIn("no market data", self.c.get(url).get_data(as_text=True))  # matched, but no drivers yet
+        self.assertIn("No talking points generated yet", self.c.get(url).get_data(as_text=True))   # viewing never generates
+        with mock.patch.object(config, "ANTHROPIC_API_KEY", ""):
+            html = self.post(f"{url}", vendor="v1").get_data(as_text=True)                        # matched, but no drivers yet
+        self.assertIn("no market data", html)
         seed_driver("lith", [("2026-06-01", 100), ("2026-12-31", 130)], "123")
         with mock.patch.object(config, "ANTHROPIC_API_KEY", ""):
-            html = self.c.get(url + "?vendor=v1").get_data(as_text=True)
+            html = self.post(f"{url}", vendor="v1").get_data(as_text=True)                        # Regenerate with data
         self.assertIn("template-written", html)
         self.assertIn("AI wording was not used", html)                 # says why the AI text is missing
         self.assertIn("Lithium carbonate", html)
-        # unmatched component explains what to do
-        self.post(f"/products/{pid}/components/{cid}", template="cell", item_key="")
-        self.assertIn("not matched", self.c.get(url).get_data(as_text=True))
+        # an unmatched component explains what to do
+        self.post(f"/products/{pid}/components", name="Mystery widget", qty="1")
+        with db.connect() as c:
+            wid = c.execute("SELECT id FROM components WHERE name='Mystery widget'").fetchone()["id"]
+        self.assertIn("not matched to anything", self.c.get(f"/products/{pid}/components/{wid}/talking-points").get_data(as_text=True))
 
     def test_drivers_page_and_upload(self):
         self.assertIn("Lithium carbonate", self.c.get("/drivers").get_data(as_text=True))

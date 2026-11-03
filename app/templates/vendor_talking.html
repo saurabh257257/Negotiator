@@ -1,15 +1,39 @@
 {% extends "base.html" %}
-{% block title %}Vendor talking points · Negotiator{% endblock %}
+{% block title %}Call brief · Negotiator{% endblock %}
 {% block body %}
-<div class="crumb"><a href="{{ url_for('work.vendors_page') }}">Vendors</a>{% if vf %} › {{ vf.vendor }}{% endif %}</div>
+<div class="crumb"><a href="{{ url_for('work.talking_hub') }}">Talking points</a>{% if name %} › {{ name }}{% endif %}</div>
 
 {% if error %}
-<h1>Vendor talking points</h1>
-<div class="card warn">{{ error }} <a href="{{ url_for('work.vendors_page') }}">Back to vendors</a></div>
+<h1>Call brief</h1>
+<div class="card warn">{{ error }} <a href="{{ url_for('work.talking_hub') }}">Back to Talking points</a></div>
 {% else %}
+<div class="row spread">
+  <div>
+    <h1>Call brief: {{ name }}</h1>
+    <p class="muted">One conversation covering all the products you bought from this vendor in the last 6 months{% if n_products %} ({{ n_products }}){% endif %}.</p>
+  </div>
+  <form method="post" action="{{ url_for('work.vendor_talking_generate') }}">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="vendor" value="{{ vid }}">
+    <button class="btn {{ 'primary' if (not rec) or stale else '' }}">{{ 'Regenerate' if rec else 'Generate talking points' }}</button>
+  </form>
+</div>
+
+{% if not rec %}
+<div class="card">
+  <b>No talking points generated yet for {{ name }}.</b>
+  <p class="muted" style="margin-bottom:0">Click <b>Generate talking points</b>. It builds one brief for a single call covering all {{ n_products }} products. {{ 'It uses a small amount of AI credit; the result is saved so you only do this once.' if ai_on else 'AI is not configured, so template wording is used; the result is saved.' }}</p>
+</div>
+{% else %}
+{% set vf = rec.facts %}{% set points = rec.points %}{% set source = rec.source %}{% set note = rec.note %}
 {% set pc = vf.primary_currency %}{% set c = vf.currencies[pc] %}
-<h1>Call brief: {{ vf.vendor }}</h1>
-<p class="muted">One conversation covering all {{ vf.n_products }} product{{ '' if vf.n_products == 1 else 's' }} you bought from this vendor in the last 6 months.</p>
+
+<div class="flash info">
+  Saved brief generated {{ rec.created_at|localtime }} · {{ 'AI-written' if source == 'ai' else 'template-written' }}. Opening this page does not regenerate it.
+  {% if history|length > 1 %}<div class="small" style="margin-top:6px">Versions:
+    {% for h in history %}{% if h.id == rec.id %}<b>{{ h.created_at|localtime }}</b>{% else %}<a href="{{ url_for('work.vendor_talking_points', vendor=vid, id=h.id) }}">{{ h.created_at|localtime }}</a>{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</div>{% endif %}
+</div>
+{% if older %}<div class="flash warn" style="background:var(--amber-soft);color:var(--amber)">You are viewing an older version. <a href="{{ url_for('work.vendor_talking_points', vendor=vid) }}">Show the latest</a></div>{% endif %}
+{% if stale %}<div class="flash warn" style="background:var(--amber-soft);color:var(--amber)">Your Zoho purchases or market data have changed since this was generated, so the numbers may be out of date. Click <b>Regenerate</b> to refresh.</div>{% endif %}
 
 <div class="tiles">
   <div class="card"><div class="muted">Products bought</div><div class="big">{{ vf.n_products }}</div><div class="muted small">{{ vf.concerns|length }} to raise</div></div>
@@ -32,28 +56,67 @@
   <table>
     <thead><tr><th>Product</th><th class="n">Purchases</th><th class="n">Latest rate</th><th class="n">Change</th><th class="n">Drivers imply</th><th class="n">Gap</th><th class="n">Indicated overpayment</th><th class="n">Share of spend</th><th>Raise?</th></tr></thead>
     <tbody>
-    {% for f in vf['items'] %}
+    {# Products to raise come first (largest indicated overpayment first), then all the others (largest spend first) #}
+    {% set to_raise = vf['items']|selectattr('concern')|sort(attribute='extra', reverse=true)|list %}
+    {% set the_rest = vf['items']|rejectattr('concern')|list %}
+    {% for f in to_raise + the_rest %}
+      {% if loop.first and to_raise %}<tr class="grp"><td colspan="9">To raise on the call ({{ to_raise|length }})</td></tr>{% endif %}
+      {% if f is sameas the_rest[0] %}<tr class="grp"><td colspan="9">Others ({{ the_rest|length }}){% if to_raise %}: no change requested{% endif %}</td></tr>{% endif %}
       <tr>
-        <td><a href="{{ url_for('dashboard') }}#v={{ vf.vendor_id|urlencode }}&p={{ f.product_key|urlencode }}"><b>{{ f.component }}</b></a><div class="muted small">template: {{ f.template }}</div></td>
+        <td><a href="{{ url_for('dashboard') }}#v={{ vid|urlencode }}&p={{ f.product_key|urlencode }}"><b>{{ f.component }}</b></a><div class="muted small">template: {{ f.template }}</div></td>
         <td class="n">{{ f.purchases }}</td>
         <td class="n">{{ f.currency }} {{ f.latest_rate|money }}<div class="muted small">{{ f.latest_date }}</div></td>
         <td class="n">{{ f.vendor_change|pct }}</td>
-        <td class="n">{% if f.justified_price is not none %}{{ f.currency }} {{ f.justified_price|money }}{% else %}<span class="muted">no data</span>{% endif %}</td>
+        <td class="n">{% if f.justified_price is not none %}
+          <span class="tip" tabindex="0">{{ f.currency }} {{ f.justified_price|money }}
+            <span class="tip-body">
+              <b>Why {{ f.currency }} {{ f.justified_price|money }}?</b><br>
+              Starts from {{ f.currency }} {{ f.first_rate|money }}, your first purchase on {{ f.first_date }}.<br>
+              {% for r in f.drivers %}{% if r.has_data %}<span class="tl">{{ r.driver }}: {{ r.change_since|pct }} since then × {{ '%.0f'|format(r.weight * 100) }}% of the price = <b>{{ r.impact_since|pct(2) }}</b></span>{% else %}<span class="tl muted">{{ r.driver }} ({{ '%.0f'|format(r.weight * 100) }}%): no market data, ignored</span>{% endif %}{% endfor %}
+              <span class="tl"><b>Total {{ (f.justified_price / f.first_rate - 1)|pct(2) }}</b> → {{ f.first_rate|money }} × {{ '%.4f'|format(f.justified_price / f.first_rate) }} = <b>{{ f.justified_price|money }}</b></span>
+              {% set rest = 1 - (f.drivers|sum(attribute='weight')) %}
+              <span class="tl muted">The other {{ '%.0f'|format((rest + (f.drivers|rejectattr('has_data')|sum(attribute='weight'))) * 100) }}% of the price (labour, margin, other inputs, drivers without data) is assumed unchanged.</span>
+              <span class="tl">Your latest rate {{ f.currency }} {{ f.latest_rate|money }} is <b>{{ f.gap|pct }}</b> {{ 'above' if f.gap > 0 else 'below' }} this.</span>
+              <span class="tl muted">Weights come from the "{{ f.template }}" template (estimates). Market moves are public indicators, not the vendor's costs.</span>
+            </span></span>
+          {% else %}<span class="muted">no data</span>{% endif %}</td>
         <td class="n {{ 'up' if f.gap is not none and f.gap > 0.01 }}">{{ f.gap|pct }}</td>
         <td class="n">{% if f.extra %}{{ f.currency }} {{ f.extra|money }}{% else %}–{% endif %}</td>
         <td class="n">{% if f.spend_share is not none %}{{ '%.0f'|format(f.spend_share * 100) }}%{% else %}–{% endif %}</td>
-        <td>{% if f.concern %}<span class="pill bad">Raise</span>{% elif f.justified_price is none %}<span class="pill soon">No data</span>{% else %}<span class="pill ok">OK</span>{% endif %}</td>
+        <td>{% if f.concern %}<span class="pill bad" title="{% if f.gap is not none and f.gap * 100 >= vf.settings.increase_pct %}drivers imply {{ '%.1f'|format(f.gap * 100) }}% lower (your threshold is {{ vf.settings.increase_pct }}%){% endif %}{% if f.raised %} rate rose {{ '%.1f'|format(f.vendor_change * 100) }}%{% endif %}{% if f.cheaper_peer %} {{ f.cheaper_peer.vendor }} is cheaper{% endif %}">Raise</span>{% elif f.justified_price is none %}<span class="pill soon">No data</span>{% else %}<span class="pill ok">OK</span>{% endif %}</td>
       </tr>
+      {% if f.concern and f.trend %}
+      <tr class="trendrow"><td colspan="9">
+        <div class="trendbox">
+          <div class="trendchart">{{ trend_chart(f.trend, f.price_index) }}</div>
+          <div class="trendkey">
+            <div class="small muted">Since {{ f.first_date }} (all lines start at 100)</div>
+            {% for t in f.trend %}<div><i class="sw" style="background:var(--c{{ loop.index if loop.index <= 5 else 5 }})"></i>{{ t.driver }} <b class="{{ 'down' if t.change < 0 else 'up' }}">{{ t.change|pct }}</b> <span class="muted small">({{ '%.0f'|format(t.weight * 100) }}% of price)</span></div>{% endfor %}
+            <div><i class="sw dash"></i>Your price <b>{{ f.vendor_change|pct }}</b> <span class="muted small">({{ f.purchases }} purchase{{ '' if f.purchases == 1 else 's' }})</span></div>
+          </div>
+        </div>
+      </td></tr>
+      {% endif %}
     {% endfor %}
     </tbody>
   </table>
-  <p class="note">Each product's cost-driver template is guessed from its name. To change one, add the item as a component under <a href="{{ url_for('work.products') }}">Products</a>, match it to this Zoho item and set the template. "Raise" means the drivers imply a lower price, the rate rose by more than your alert threshold, or another vendor sells it cheaper. Market data comes from <a href="{{ url_for('work.drivers_page') }}">Cost drivers</a>.</p>
+  <p class="note">Each product's cost-driver template is guessed from its name. To change one, add the item as a component under <a href="{{ url_for('work.products') }}">Products</a>, match it to this Zoho item and set the template. "Raise" means the drivers imply a price lower than today's by at least your rate-increase threshold ({{ vf.settings.increase_pct }}%, set on the Alerts page), the rate rose by that much, or another vendor sells it cheaper. Hover "Raise" for the reason. Market data comes from <a href="{{ url_for('work.drivers_page') }}">Cost drivers</a>.</p>
 </section>
 <script>
+// Hover explanations are position:fixed so the scrolling table can't clip them.
+function placeTip(t) {
+  const b = t.querySelector('.tip-body'); if (!b) return;
+  const r = t.getBoundingClientRect(), w = b.offsetWidth, h = b.offsetHeight;
+  b.style.left = Math.max(8, Math.min(r.right - w, innerWidth - w - 8)) + 'px';
+  b.style.top = (r.bottom + h + 14 > innerHeight && r.top - h - 10 > 0 ? r.top - h - 8 : r.bottom + 6) + 'px';
+}
+document.addEventListener('mouseover', e => { const t = e.target.closest('.tip'); if (t) placeTip(t); });
+document.addEventListener('focusin', e => { const t = e.target.closest('.tip'); if (t) placeTip(t); });
 document.getElementById('copy').addEventListener('click', e => {
   const t = [...document.querySelectorAll('#points li')].map((l, i) => (i + 1) + '. ' + l.textContent).join('\n');
   navigator.clipboard && navigator.clipboard.writeText(t); e.target.textContent = 'Copied'; setTimeout(() => e.target.textContent = 'Copy', 1200);
 });
 </script>
+{% endif %}
 {% endif %}
 {% endblock %}

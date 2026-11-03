@@ -57,6 +57,21 @@ CREATE TABLE IF NOT EXISTS components (
     match_score REAL
 );
 CREATE INDEX IF NOT EXISTS idx_components_product ON components(product_id);
+CREATE TABLE IF NOT EXISTS talking_points (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    mobile TEXT NOT NULL,
+    scope TEXT NOT NULL,            -- vendor | component
+    ref TEXT NOT NULL,              -- vendor id, or component id
+    product_id INTEGER,             -- for scope=component
+    title TEXT,                     -- vendor name or component name, for the list page
+    source TEXT NOT NULL,           -- ai | rules
+    note TEXT,                      -- why AI wording was not used, if so
+    points TEXT NOT NULL,           -- JSON list of strings
+    facts TEXT NOT NULL,            -- JSON snapshot of the numbers the points were written from
+    data_stamp TEXT,                -- identifies the Zoho/driver data used, to tell when a saved brief is out of date
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_tp ON talking_points(mobile, scope, ref, id);
 CREATE TABLE IF NOT EXISTS alert_settings (
     mobile TEXT PRIMARY KEY,
     increase_pct REAL NOT NULL DEFAULT 3,   -- flag a rate increase of at least this much vs the previous purchase

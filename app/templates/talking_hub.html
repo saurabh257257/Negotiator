@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Talking points · Negotiator{% endblock %}
+{% block body %}
+<h1>Talking points</h1>
+<p class="muted">One brief per vendor for a single call covering all the products you buy from them. Briefs are generated <b>only when you click</b>, then saved, so you can reopen the last one any time without waiting or using AI credit{{ '' if ai_on else ' (AI is not configured, so template wording is used)' }}.</p>
+
+{% if rows %}
+<div class="card xscroll"><table>
+  <thead><tr><th>Vendor</th><th class="n">Products</th><th class="n">Spend (6 months)</th><th class="n">Open alerts</th><th>Last generated</th><th></th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td><b>{{ r.name }}</b></td>
+      <td class="n">{{ r.products }}</td>
+      <td class="n">{% for cur, amt in r.spend.items() %}{{ cur or '-' }} {{ '{:,.0f}'.format(amt) }}{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
+      <td class="n">{% if r.alerts %}<span class="pill bad">{{ r.alerts }}</span>{% else %}<span class="muted">0</span>{% endif %}</td>
+      <td>{% if r.saved %}{{ r.saved.created_at|localtime }}
+          <span class="pill {{ 'ok' if r.saved.source == 'ai' else 'soon' }}">{{ 'AI-written' if r.saved.source == 'ai' else 'template' }}</span>
+          {% if r.stale %}<span class="pill warn" title="Your Zoho or market data has changed since this was generated">out of date</span>{% endif %}
+          {% else %}<span class="muted">Not generated yet</span>{% endif %}</td>
+      <td class="n" style="white-space:nowrap">
+        {% if r.saved %}<a class="btn sm primary" href="{{ url_for('work.vendor_talking_points', vendor=r.id) }}">View</a>{% endif %}
+        <form method="post" action="{{ url_for('work.vendor_talking_generate') }}" style="display:inline"><input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="vendor" value="{{ r.id }}"><button class="btn sm {{ '' if r.saved else 'primary' }}">{{ 'Regenerate' if r.saved else 'Generate' }}</button></form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}
+<div class="card muted">No vendors yet. <a href="{{ url_for('connect') }}">Connect Zoho</a> and sync first.</div>
+{% endif %}
+
+<h2 style="margin-top:26px">Product talking points</h2>
+<p class="muted">Saved briefs for a single product line. Generate these from a product page (the <b>Talking points</b> button on a matched component).</p>
+{% if comps %}
+<div class="card xscroll"><table>
+  <thead><tr><th>Component</th><th>Product</th><th>Last generated</th><th></th></tr></thead>
+  <tbody>
+  {% for m in comps %}
+    <tr>
+      <td><b>{{ m.title }}</b></td><td>{{ m.product or '–' }}</td>
+      <td>{{ m.created_at|localtime }} <span class="pill {{ 'ok' if m.source == 'ai' else 'soon' }}">{{ 'AI-written' if m.source == 'ai' else 'template' }}</span>{% if m.stale %} <span class="pill warn">out of date</span>{% endif %}</td>
+      <td class="n"><a class="btn sm primary" href="{{ url_for('work.talking_points', pid=m.product_id, cid=m.ref) }}">View</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}
+<div class="card muted">None saved yet.</div>
+{% endif %}
+{% endblock %}
