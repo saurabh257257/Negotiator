@@ -63,6 +63,12 @@ class CatalogMatchTest(unittest.TestCase):
         self.assertEqual(matching.best_match("cell holder 18650", prods)[0], "b")
         self.assertEqual(matching.best_match("Totally unrelated thing", prods), (None, 0.0))
 
+    def test_matching_handles_spelling_variants(self):
+        prods = {"a": {"name": "COPPER BUS BAR Universal (55x20x2mm) - Tin Coated"},
+                 "b": {"name": "LITHIUM-ION CELL 2600 mAh DMEGC 18650"}}
+        self.assertEqual(matching.best_match("Copper busbar 55x20x2mm", prods)[0], "a")
+        self.assertEqual(matching.best_match("Li-ion cell 2600mAh 18650", prods)[0], "b")
+
 
 class ImportersTest(unittest.TestCase):
     def test_csv_with_header_and_quantities(self):

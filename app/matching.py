@@ -5,8 +5,16 @@ STOP = {"and", "the", "of", "for", "with", "a", "an", "to", "in", "pcs", "nos", 
 THRESHOLD = 0.6
 
 
+# Spelling variants that should count as the same word.
+SYNONYMS = [(r"bus[\s-]?bars?", "busbar"), (r"(lithium|li)[\s-]?ion", "liion"), (r"\bbms\b|battery management system", "bms"),
+            (r"\bcells\b", "cell"), (r"\bwires\b", "wire"), (r"\bcables\b", "cable")]
+
+
 def tokens(text: str) -> set:
-    return {t for t in re.findall(r"[a-z0-9]+", (text or "").lower()) if t not in STOP}
+    t = (text or "").lower()
+    for pattern, repl in SYNONYMS:
+        t = re.sub(pattern, repl, t)
+    return {w for w in re.findall(r"[a-z0-9]+", t) if w not in STOP}
 
 
 def score(a: str, b: str) -> float:

@@ -37,7 +37,9 @@ The Zoho pull and everything above except the optional AI features is plain dete
 - Only % change of a driver is used; copper/aluminum/crude are USD series, so INR-quoted items do not yet
   include the USD/INR effect unless that driver is in the template.
 - CNY/INR from Yahoo currently returns only one data point.
-- PDF reading and AI generation have unit tests with a faked AI, but have not been run against the real API.
+- AI features (generate components, PDF component lists, talking points) were run once against the real API
+  and worked; AI-suggested templates for borderline parts (insulation sheets, end plates) can be off, so
+  review them. AI generates generic part names, so they often do not match your Zoho item names.
 
 ### Important: how "category" works
 Zoho Books does not store a product category on items or bill lines (that exists in Zoho Inventory only).
