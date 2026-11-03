@@ -17,7 +17,7 @@ def create_app():
     app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
                       MAX_CONTENT_LENGTH=6 * 1024 * 1024)
     db.init()
-    from .work import bp as work_bp
+    from .work import bp as work_bp, open_alert_count
     app.register_blueprint(work_bp)
 
     # ------------------------------------------------------------ helpers
@@ -32,7 +32,13 @@ def create_app():
     def inject():
         if "csrf" not in session:
             session["csrf"] = secrets.token_urlsafe(24)
-        return {"csrf_token": session["csrf"], "mobile": session.get("mobile")}
+        n_alerts = 0
+        if session.get("mobile"):
+            try:
+                n_alerts = open_alert_count(session["mobile"])
+            except Exception:  # a badge must never break a page
+                n_alerts = 0
+        return {"csrf_token": session["csrf"], "mobile": session.get("mobile"), "n_alerts": n_alerts}
 
     @app.template_filter("money")
     def money(value):

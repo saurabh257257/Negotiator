@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 
-from . import ai, analysis, catalog, db, drivers, importers, matching, negotiation
+from . import ai, alerts, analysis, catalog, db, drivers, importers, matching, negotiation
 from .auth import login_required
 
 bp = Blueprint("work", __name__)
@@ -198,6 +198,73 @@ def talking_points(pid, cid):
         return render_template("talking.html", p=p, c=c, facts=None, error=facts["error"], points=[], source=None)
     points, source = negotiation.talking_points(facts)
     return render_template("talking.html", p=p, c=c, facts=facts, error=None, points=points, source=source)
+
+
+# ------------------------------------------------------------------ price-gap alerts (E2)
+_count_cache: dict = {}
+
+
+def open_alert_count(mobile: str) -> int:
+    """Number of open (not dismissed) alerts, cached until the data or settings change."""
+    s = alerts.get_settings(mobile)
+    with db.connect() as conn:
+        n, last = conn.execute("SELECT COUNT(*), COALESCE(MAX(id),0) FROM bill_lines WHERE mobile=?", (mobile,)).fetchone()
+    gone = alerts.dismissed(mobile)
+    key = (mobile, n, last, s["increase_pct"], s["gap_pct"], len(gone))
+    if key not in _count_cache:
+        if len(_count_cache) > 200:
+            _count_cache.clear()
+        _count_cache[key] = sum(1 for a in alerts.compute(_tree(mobile), s) if a["key"] not in gone)
+    return _count_cache[key]
+
+
+@bp.get("/alerts")
+@login_required
+def alerts_page():
+    mobile = session["mobile"]
+    settings = alerts.get_settings(mobile)
+    gone = alerts.dismissed(mobile)
+    every = alerts.compute(_tree(mobile), settings)
+    open_ = [a for a in every if a["key"] not in gone]
+    show_dismissed = request.args.get("show") == "dismissed"
+    kind = request.args.get("type") if request.args.get("type") in ("increase", "gap") else "all"
+    rows = [a for a in every if (a["key"] in gone) == show_dismissed and kind in ("all", a["type"])]
+    extra: dict = {}
+    for a in open_:
+        extra[a["currency"] or "-"] = extra.get(a["currency"] or "-", 0) + a["extra"]
+    with db.connect() as conn:
+        comps = conn.execute("SELECT id, product_id, item_key FROM components WHERE mobile=? AND item_key IS NOT NULL",
+                             (mobile,)).fetchall()
+    talk = {}
+    for c in comps:
+        talk.setdefault(c["item_key"], (c["product_id"], c["id"]))
+    return render_template("alerts.html", alerts=rows, settings=settings, kind=kind, show_dismissed=show_dismissed,
+                           n_open=len(open_), n_inc=sum(1 for a in open_ if a["type"] == "increase"),
+                           n_gap=sum(1 for a in open_ if a["type"] == "gap"), n_dismissed=len(every) - len(open_),
+                           extra=extra, talk=talk)
+
+
+@bp.post("/alerts/settings")
+@login_required
+def alerts_settings():
+    try:
+        alerts.save_settings(session["mobile"], float(request.form.get("increase_pct", "")),
+                             float(request.form.get("gap_pct", "")))
+        flash("Alert thresholds saved.", "ok")
+    except ValueError as exc:
+        flash(str(exc) if "between" in str(exc) else "Enter both thresholds as numbers.", "error")
+    return redirect(url_for("work.alerts_page"))
+
+
+@bp.post("/alerts/dismiss")
+@login_required
+def alerts_dismiss():
+    key = request.form.get("key", "")
+    if key and request.form.get("undo"):
+        alerts.restore(session["mobile"], key)
+    elif key:
+        alerts.dismiss(session["mobile"], key)
+    return redirect(request.referrer or url_for("work.alerts_page"))
 
 
 # ------------------------------------------------------------------ drivers (E3-lite)

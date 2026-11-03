@@ -33,6 +33,9 @@ h1{font-size:22px;margin:0 0 6px} h2{font-size:17px;margin:0 0 8px} h3{font-size
 .connectors{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin:18px 0 4px}
 .cc{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
 .cc.ready{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.badge{background:var(--red);color:#fff;border-radius:99px;font-size:11px;padding:0 7px;font-weight:700;line-height:18px;margin-left:2px}
+.pill.bad{background:var(--red-soft);color:var(--red)}
+a.chip{text-decoration:none;color:var(--text)} a.chip.on{color:var(--accent)}
 .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
 .grid3 .card{margin:16px 0 0}
 .points{padding-left:20px;margin:10px 0} .points li{margin:8px 0}

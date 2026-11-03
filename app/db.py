@@ -57,6 +57,17 @@ CREATE TABLE IF NOT EXISTS components (
     match_score REAL
 );
 CREATE INDEX IF NOT EXISTS idx_components_product ON components(product_id);
+CREATE TABLE IF NOT EXISTS alert_settings (
+    mobile TEXT PRIMARY KEY,
+    increase_pct REAL NOT NULL DEFAULT 3,   -- flag a rate increase of at least this much vs the previous purchase
+    gap_pct REAL NOT NULL DEFAULT 5         -- flag a vendor this much above the cheapest vendor for the same product
+);
+CREATE TABLE IF NOT EXISTS alert_dismissed (
+    mobile TEXT NOT NULL,
+    key TEXT NOT NULL,
+    dismissed_at TEXT NOT NULL,
+    PRIMARY KEY (mobile, key)
+);
 CREATE TABLE IF NOT EXISTS driver_points (
     driver TEXT NOT NULL,
     mobile TEXT NOT NULL DEFAULT '',  -- '' = shared public series, otherwise the user's own benchmark

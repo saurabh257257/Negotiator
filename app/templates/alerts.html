@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Alerts · Negotiator{% endblock %}
+{% block body %}
+<h1>Price alerts</h1>
+<p class="muted">Where you may be paying more than you should, from your Zoho purchases in the last 6 months. A <b>rate increase</b> is a vendor's latest rate above its previous rate for the same product. A <b>vendor gap</b> is a vendor charging more than the cheapest vendor for the same product.</p>
+
+<div class="tiles">
+  <div class="card"><div class="muted">Open alerts</div><div class="big">{{ n_open }}</div></div>
+  <div class="card"><div class="muted">Rate increases</div><div class="big">{{ n_inc }}</div></div>
+  <div class="card"><div class="muted">Vendor gaps</div><div class="big">{{ n_gap }}</div></div>
+  <div class="card"><div class="muted">Extra paid on latest orders</div>
+    <div class="mid">{% for cur, amt in extra.items() %}{{ cur }} {{ amt|money }}{% if not loop.last %}<br>{% endif %}{% else %}–{% endfor %}</div></div>
+</div>
+
+<section class="card">
+  <form method="post" action="{{ url_for('work.alerts_settings') }}" class="row">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <div><label for="ip">Flag rate increases of at least (%)</label><input id="ip" name="increase_pct" value="{{ settings.increase_pct }}" style="width:110px"></div>
+    <div><label for="gp">Flag vendors this much above the cheapest (%)</label><input id="gp" name="gap_pct" value="{{ settings.gap_pct }}" style="width:110px"></div>
+    <button class="btn">Save thresholds</button>
+  </form>
+</section>
+
+<div class="row spread" style="margin:14px 0 8px">
+  <div class="chips">
+    {% for k, label in [('all','All'),('increase','Rate increases'),('gap','Vendor gaps')] %}
+      <a class="chip {{ 'on' if kind == k }}" href="{{ url_for('work.alerts_page', type=k, show='dismissed' if show_dismissed else None) }}">{{ label }}</a>
+    {% endfor %}
+  </div>
+  <a href="{{ url_for('work.alerts_page', type=kind, show=None if show_dismissed else 'dismissed') }}" class="small">
+    {{ 'Show open alerts' if show_dismissed else 'Show dismissed (' ~ n_dismissed ~ ')' }}</a>
+</div>
+
+{% if alerts %}
+<div class="card xscroll"><table>
+  <thead><tr><th>Severity</th><th>Alert</th><th>Product</th><th>Vendor</th><th class="n">Change</th><th class="n">Extra paid on latest order</th><th></th></tr></thead>
+  <tbody>
+  {% for a in alerts %}
+    <tr>
+      <td><span class="pill {{ 'bad' if a.severity == 'high' else 'warn' }}">{{ a.severity }}</span></td>
+      <td><b>{{ 'Rate increase' if a.type == 'increase' else 'Vendor gap' }}</b><div class="muted small">{{ a.detail }}</div></td>
+      <td>{{ a.product }}</td>
+      <td>{{ a.vendor }}</td>
+      <td class="n up"><b>+{{ '%.1f'|format(a.pct) }}%</b></td>
+      <td class="n">{{ a.currency }} {{ a.extra|money }}<div class="muted small">{{ '%g'|format(a.qty) }} units · {{ a.date }}</div></td>
+      <td class="n" style="white-space:nowrap">
+        <a class="btn sm" href="{{ url_for('dashboard') }}#v={{ a.vendor_id|urlencode }}&p={{ a.product_key|urlencode }}">View</a>
+        {% if talk.get(a.product_key) %}<a class="btn sm primary" href="{{ url_for('work.talking_points', pid=talk[a.product_key][0], cid=talk[a.product_key][1], vendor=a.vendor_id) }}">Talking points</a>{% endif %}
+        <form method="post" action="{{ url_for('work.alerts_dismiss') }}" style="display:inline"><input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="key" value="{{ a.key }}">{% if show_dismissed %}<input type="hidden" name="undo" value="1"><button class="btn sm">Restore</button>{% else %}<button class="btn sm">Dismiss</button>{% endif %}</form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+<p class="note">"Extra paid on latest order" = (latest rate − previous rate, or − the cheapest vendor's rate) × the quantity on that vendor's latest purchase. Amounts are in the bill's currency and are never added across currencies. "Talking points" appears when a component of one of your products is matched to this item.</p>
+{% else %}
+<div class="card muted">{% if show_dismissed %}No dismissed alerts.{% elif n_open == 0 %}No open alerts at the current thresholds. Lower them above to see smaller changes.{% else %}No alerts of this type.{% endif %}</div>
+{% endif %}
+{% endblock %}

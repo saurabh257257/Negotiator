@@ -13,6 +13,7 @@
   <nav>
     <a href="{{ url_for('connect') }}">Connect</a>
     <a href="{{ url_for('dashboard') }}">Purchase rates</a>
+    <a href="{{ url_for('work.alerts_page') }}">Alerts{% if n_alerts %} <span class="badge">{{ n_alerts }}</span>{% endif %}</a>
     <a href="{{ url_for('work.products') }}">Products</a>
     <a href="{{ url_for('work.drivers_page') }}">Cost drivers</a>
   </nav>

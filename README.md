@@ -30,6 +30,12 @@ Helps battery/EV manufacturers renegotiate vendor prices. See [PLAN.md](PLAN.md)
 8. **AI features (E8, optional)**: "Generate components with AI", PDF component lists and AI-written
    talking points. They need `ANTHROPIC_API_KEY` in `.env`; without it they show "not configured".
 
+9. **Price alerts (E2)**: flags (a) **rate increases**, a vendor's latest rate above its previous rate for
+   the same product, and (b) **vendor gaps**, a vendor charging more than the cheapest vendor for the same
+   product. Thresholds are adjustable (default 3% and 5%). Each alert shows the extra paid on the latest
+   order, links to the rate history and talking points, and can be dismissed and restored. The nav shows the
+   open-alert count. Alerts are in-app only; no email or digest yet.
+
 The Zoho pull and everything above except the optional AI features is plain deterministic code.
 
 ### Known limitations
