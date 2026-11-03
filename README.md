@@ -72,6 +72,7 @@ The tests use a fake Zoho, so they need no network or credentials.
 ```
 app/            Flask app: routes, Zoho client + sync, grouping logic, templates
 tests/          Unit and flow tests (fake Zoho)
+docs/           Negotiator-Requirements-2-pager.docx: what is built today + enhancement backlog (editable)
 mockup/         Static UI mockup of the full product
 PLAN.md         Product plan
 ```
