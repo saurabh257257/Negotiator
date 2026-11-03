@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Negotiator Mockup</title>
+<style>
+:root{
+  --bg:#f6f7f9; --surface:#fff; --surface2:#f1f3f6; --border:#e3e6eb; --text:#16191f; --muted:#667085;
+  --accent:#2a5bd7; --accent-soft:#e8eefc; --red:#d92d20; --red-soft:#fdecea; --green:#12805c; --green-soft:#e3f5ee;
+  --amber:#b54708; --amber-soft:#fef3e2;
+  --c1:#2a5bd7; --c2:#d9822b; --c3:#12805c; --c4:#8a4fd6; --c5:#667085;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface2:#1e222b; --border:#2a2f3a; --text:#e8eaee; --muted:#9aa3b2;
+    --accent:#6b93f5; --accent-soft:#1c2744; --red:#f97066; --red-soft:#3a1d1b; --green:#47c79b; --green-soft:#12302a;
+    --amber:#f5a85b; --amber-soft:#3a2a14;
+    --c1:#6b93f5; --c2:#f0a050; --c3:#47c79b; --c4:#b48af0; --c5:#9aa3b2;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface2:#1e222b; --border:#2a2f3a; --text:#e8eaee; --muted:#9aa3b2;
+  --accent:#6b93f5; --accent-soft:#1c2744; --red:#f97066; --red-soft:#3a1d1b; --green:#47c79b; --green-soft:#12302a;
+  --amber:#f5a85b; --amber-soft:#3a2a14;
+  --c1:#6b93f5; --c2:#f0a050; --c3:#47c79b; --c4:#b48af0; --c5:#9aa3b2;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 -apple-system,"Segoe UI",Roboto,sans-serif}
+button{font:inherit;color:inherit;cursor:pointer}
+.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+aside{background:var(--surface);border-right:1px solid var(--border);padding:18px 12px;position:sticky;top:0;height:100vh}
+.brand{font-weight:700;font-size:17px;padding:4px 10px 18px;display:flex;gap:8px;align-items:center}
+.brand i{width:22px;height:22px;border-radius:6px;background:var(--accent);display:inline-block}
+nav a{display:flex;justify-content:space-between;padding:8px 10px;border-radius:8px;color:var(--muted);margin-bottom:2px;cursor:pointer}
+nav a:hover{background:var(--surface2)}
+nav a.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav .badge{background:var(--red);color:#fff;border-radius:99px;font-size:11px;padding:0 7px;font-weight:700;line-height:18px}
+.org{position:absolute;bottom:16px;left:12px;right:12px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);padding-top:12px}
+main{padding:0 28px 40px;min-width:0}
+header.top{display:flex;justify-content:space-between;align-items:center;padding:16px 0;gap:12px;flex-wrap:wrap}
+header.top h1{margin:0;font-size:20px}
+.seg{display:inline-flex;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:3px}
+.seg button{border:0;background:none;padding:5px 12px;border-radius:7px;color:var(--muted)}
+.seg button.on{background:var(--surface);color:var(--text);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.grid{display:grid;gap:14px}
+.g4{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+.g2{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
+.card h3{margin:0 0 10px;font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.kpi .v{font-size:26px;font-weight:700;margin-top:2px}
+.kpi .s{color:var(--muted);font-size:12px;margin-top:2px}
+.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap}
+.p-red{background:var(--red-soft);color:var(--red)} .p-green{background:var(--green-soft);color:var(--green)}
+.p-amber{background:var(--amber-soft);color:var(--amber)} .p-blue{background:var(--accent-soft);color:var(--accent)} .p-grey{background:var(--surface2);color:var(--muted)}
+.btn{border:1px solid var(--border);background:var(--surface);padding:7px 14px;border-radius:8px;font-weight:600}
+.btn:hover{background:var(--surface2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.sm{padding:4px 10px;font-size:12px}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
+th.s{cursor:pointer;user-select:none} th.s:hover{color:var(--text)}
+td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr.click{cursor:pointer} tr.click:hover td{background:var(--surface2)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)} .red{color:var(--red)} .green{color:var(--green)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--border);background:var(--surface);padding:4px 12px;border-radius:99px;font-size:13px}
+.chip.on{background:var(--accent-soft);color:var(--accent);border-color:transparent;font-weight:600}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+.legend b{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+svg text{fill:var(--muted);font-size:11px}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.drv{background:var(--surface2);border-radius:10px;padding:10px 12px}
+.drv .t{font-size:12px;color:var(--muted)} .drv .p{font-weight:700;font-size:15px}
+.bar{height:22px;border-radius:5px;display:flex;align-items:center;padding:0 8px;font-size:12px;color:#fff;font-weight:600;white-space:nowrap}
+.attr{display:grid;grid-template-columns:130px 1fr 60px;gap:8px;align-items:center;margin:7px 0;font-size:13px}
+.attr .track{position:relative;height:22px;background:var(--surface2);border-radius:5px}
+.attr .mid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--border)}
+.attr .fill{position:absolute;top:3px;bottom:3px;border-radius:4px}
+.crumb{color:var(--muted);margin-bottom:8px;cursor:pointer;display:inline-block}
+.doc{background:#fff;color:#16191f;border:1px solid var(--border);border-radius:10px;padding:34px 40px;max-width:820px;line-height:1.6;outline:none}
+.doc h2{margin:0 0 4px;font-size:18px} .doc td,.doc th{border-color:#e3e6eb;color:#16191f} .doc th{color:#667085}
+.board{display:grid;grid-template-columns:repeat(5,minmax(200px,1fr));gap:12px;overflow-x:auto}
+.col{background:var(--surface2);border-radius:12px;padding:10px;min-height:240px}
+.col h4{margin:2px 4px 10px;font-size:13px;display:flex;justify-content:space-between}
+.tk{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px;margin-bottom:8px;font-size:13px;cursor:pointer}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:600}
+input,select{padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font:inherit;max-width:100%}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.bulk{background:var(--accent-soft);color:var(--accent);border-radius:10px;padding:8px 12px;margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-weight:600}
+.pager{display:flex;justify-content:space-between;align-items:center;padding-top:10px;color:var(--muted)}
+.note{font-size:12px;color:var(--muted);margin-top:10px}
+.banner{border-radius:10px;padding:12px 14px;margin-bottom:14px;font-weight:600;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.drop{border:2px dashed var(--border);border-radius:12px;padding:30px;text-align:center;color:var(--muted)}
+.wf{display:grid;grid-template-columns:140px 1fr 90px;gap:8px;align-items:center;margin:6px 0;font-size:13px}
+.wf .tr{height:20px;background:var(--surface2);border-radius:5px;position:relative}
+.wf .f{position:absolute;top:2px;bottom:2px;border-radius:4px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:9px 16px;border-radius:9px;font-weight:600;z-index:9}
+.xscroll{overflow-x:auto}
+@media (max-width:760px){.app{grid-template-columns:1fr}aside{position:static;height:auto}.org{display:none}main{padding:0 16px 30px}}
+@media print{aside,header.top,.noprint{display:none!important}.app{display:block}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand"><i></i>Negotiator</div>
+    <nav id="nav"></nav>
+    <div class="org"><b style="color:var(--text)">Volta Energy Pvt Ltd</b><br>Battery packs &middot; Demo data</div>
+  </aside>
+  <main>
+    <header class="top">
+      <h1 id="title"></h1>
+      <div class="row">
+        <div class="seg" id="roleSeg"><button data-r="exec">Executive</button><button data-r="pro">Procurement</button></div>
+        <button class="btn sm" id="themeBtn">Theme</button>
+      </div>
+    </header>
+    <div id="view"></div>
+  </main>
+</div>
+<div id="toast" class="toast" style="display:none"></div>
+
+<script>
+/* ================= data & model (same formulas the backend will use) ================= */
+const N=120, EVENT=40, NOW=N-1;
+const FX0={USD:83.5, CNY:11.55, INR:1}, SYM={USD:'$',CNY:'¥',INR:'₹'};
+const DR=[ // ev = % change at the vendor's increase date, now = % change today, both vs when the old price was set
+ {id:'lith',  name:'Lithium carbonate', type:'Commodity', src:'Manual benchmark', ev:45,  now:18},
+ {id:'cobalt',name:'Cobalt',            type:'Commodity', src:'Manual benchmark', ev:20,  now:5},
+ {id:'nickel',name:'Nickel',            type:'Commodity', src:'Manual benchmark', ev:12,  now:-4},
+ {id:'copper',name:'Copper',            type:'Commodity', src:'Yahoo HG=F',       ev:10,  now:6},
+ {id:'alu',   name:'Aluminum',          type:'Commodity', src:'Yahoo ALI=F',      ev:4,   now:-3},
+ {id:'steel', name:'Steel (HRC)',       type:'Commodity', src:'Manual benchmark', ev:8,   now:-5},
+ {id:'resin', name:'Polymer resin',     type:'Commodity', src:'Manual benchmark', ev:9,   now:-6},
+ {id:'bpa',   name:'Epoxy raw (BPA/ECH)',type:'Commodity',src:'Manual benchmark', ev:14,  now:-9},
+ {id:'elec',  name:'Electronics index', type:'Commodity', src:'Manual benchmark', ev:6,   now:-4},
+ {id:'crude', name:'Crude oil',         type:'Transport', src:'Yahoo BZ=F',       ev:8,   now:-8},
+ {id:'usdinr',name:'USD/INR',           type:'FX',        src:'Yahoo USDINR=X',   ev:1.5, now:2.5},
+ {id:'cnyinr',name:'CNY/INR',           type:'FX',        src:'Yahoo CNYINR=X',   ev:1.0, now:1.8},
+ {id:'freight',name:'Container freight',type:'Transport', src:'Manual benchmark', ev:60,  now:-15},
+];
+const D=Object.fromEntries(DR.map(d=>[d.id,d]));
+function rng(s){return()=>{s=(s*16807)%2147483647;return(s-1)/2147483646}}
+DR.forEach((d,k)=>{ const r=rng(31+k*11), pts=[[0,100],[EVENT,100+d.ev],[NOW,100+d.now]], amp=Math.max(.3,Math.abs(d.ev)/14); d.s=[];
+  for(let i=0;i<N;i++){let j=0;while(j<1&&i>pts[j+1][0])j++;const[x0,y0]=pts[j],[x1,y1]=pts[j+1],f=(i-x0)/(x1-x0);d.s.push(y0+(y1-y0)*f+(r()-.5)*amp*Math.sin(Math.PI*f))}});
+const chg=(id,day)=>D[id].s[day]/100-1;
+
+const TPL=[ // w: driver weights on the vendor price; imp: imported; f: freight share of landed value; d: duty
+ {id:'cell',name:'Li-ion cell',imp:true,f:.05,d:.15,claim:'lith',w:{lith:.32,cobalt:.08,nickel:.08,copper:.06,alu:.04,crude:.03}},
+ {id:'bms', name:'BMS',imp:true,f:.03,d:.15,claim:'elec',w:{elec:.35,copper:.10,resin:.05,crude:.03}},
+ {id:'epx', name:'Epoxy / potting',imp:true,f:.06,d:.075,claim:'bpa',w:{bpa:.45,crude:.15}},
+ {id:'sep', name:'Electrolyte & separator',imp:true,f:.05,d:.10,claim:'lith',w:{lith:.25,resin:.20,crude:.05}},
+ {id:'hold',name:'Cell holder (plastic)',imp:false,claim:'resin',w:{resin:.55,crude:.06,usdinr:.08}},
+ {id:'box', name:'Battery box (sheet metal)',imp:false,claim:'steel',w:{steel:.45,alu:.15,crude:.05}},
+ {id:'bus', name:'Busbar & nickel strip',imp:false,claim:'copper',w:{copper:.60,nickel:.10}},
+ {id:'wire',name:'Wires & connectors',imp:false,claim:'copper',w:{copper:.45,resin:.20}},
+ {id:'pkg', name:'Packaging & foam',imp:false,claim:'resin',w:{resin:.50,crude:.08}},
+];
+const T=Object.fromEntries(TPL.map(t=>[t.id,t]));
+const POOL={
+ cell:[['LFP prismatic 100Ah','LFP prismatic 280Ah','NMC pouch 20Ah','18650 cell 2.5Ah','21700 cell 4Ah','LFP 32700 cell 6Ah'],['Grade A','Grade B'],[18,60]],
+ bms:[['BMS 4S 30A','BMS 8S 50A','BMS 16S 100A','BMS 24S 150A','Smart BMS CAN 16S','Balancer board'],['v1','v2 BT','UART'],[6,48]],
+ epx:[['Epoxy potting 1kg','Epoxy potting 5kg','Epoxy adhesive 500g','Thermal epoxy 1kg','Flame-retardant epoxy 2kg','Hardener 500g'],['2-part','low-visc'],[5,30]],
+ sep:[['Separator film 16um roll','Separator film 20um roll','Electrolyte LFP 20L','Electrolyte NMC 20L'],['std','HV'],[40,180]],
+ hold:[['Cell holder 18650 x2','Cell holder 18650 x5','Cell holder 21700 x4','Cell holder 32700 x2','Cell spacer'],['FR','std'],[3,40]],
+ box:[['Battery box 12V 100Ah','Battery box 48V 50Ah','Battery box 72V 30Ah','E-rickshaw tray','Telecom enclosure'],['powder coat','aluminum','SS'],[450,3500]],
+ bus:[['Nickel strip 0.15mm','Copper busbar 3x20','Copper busbar 5x30','Tab connector','Series link'],['A','B'],[10,300]],
+ wire:[['Silicone wire 14AWG','Silicone wire 10AWG','Fuse holder','Anderson 50A','Balance lead 16S'],['red','black'],[8,400]],
+ pkg:[['Foam insert','Corrugated carton 5-ply','Antistatic bag','Edge protector'],['S','M','L'],[4,120]],
+};
+const VEND=[ // [name, template, quote currency, event? , inflation vs what drivers support]
+ ['Shenzhen PowerCell Co.','cell','USD',1,1.00],['Guangzhou EnerCell Ltd','cell','USD',1,1.45],
+ ['Dongguan VoltCore BMS','bms','CNY',1,1.60],['Shenzhen SmartBMS Tech','bms','USD',1,1.10],
+ ['Ningbo EpoxyChem','epx','USD',1,1.35],['Shanghai ResinTech','epx','CNY',0,1],['Jiangsu Separator Materials','sep','USD',1,1.20],
+ ['Pune PolyMould Pvt Ltd','hold','INR',1,1.30],['Hosur Plastics','hold','INR',1,1.05],['Chennai Enclosures','box','INR',1,1.50],
+ ['Ahmedabad Metal Fab','box','INR',0,1],['Bengaluru Busbar Works','bus','INR',1,1.15],['Faridabad Cables & Connectors','wire','INR',1,1.25],
+ ['Gujarat Packaging Co.','pkg','INR',0,1],
+].map((v,i)=>({id:'v'+i,name:v[0],tpl:v[1],cur:v[2],event:!!v[3],inf:v[4],imp:v[2]!=='INR'}));
+const V=Object.fromEntries(VEND.map(v=>[v.id,v]));
+
+const SK=[]; (function(){
+  const r=rng(777);
+  VEND.forEach((v,vi)=>{
+    const [names,vars,pr]=POOL[v.tpl], t=T[v.tpl], n=15+Math.floor(r()*26), aff=.6+r()*.4;
+    v.claimTxt = v.event ? `${D[t.claim].name} ${D[t.claim].ev>=0?'up':'down'} ${Math.abs(D[t.claim].ev)}%` : '';
+    for(let i=0;i<n;i++){
+      const old=+(pr[0]+Math.pow(r(),1.6)*(pr[1]-pr[0])).toFixed(2);
+      const vol=Math.round(100+Math.pow(r(),2.2)*(v.tpl==='cell'?1800:v.tpl==='bms'?300:v.tpl==='epx'||v.tpl==='sep'?400:2500));
+      const affected=v.event&&r()<aff;
+      const inc=affected?Math.max(.02,t.w[t.claim]*D[t.claim].ev/100*v.inf*(.92+r()*.16)):0;
+      const conf=r()<.07?.45+r()*.33:.82+r()*.17;
+      SK.push({id:`${v.tpl.toUpperCase()}-${1000+vi*60+i}`,name:`${names[i%names.length]} ${vars[Math.floor(i/names.length)%vars.length]}`,
+        vendor:v.id,tpl:v.tpl,old,price:affected?+(old*(1+inc)).toFixed(2):old,vol,affected,conf,review:conf<.8});
+    }
+  });
+})();
+function calc(s){
+  const t=T[s.tpl], v=V[s.vendor];
+  s.justChg=Object.entries(t.w).reduce((a,[k,w])=>a+w*chg(k,NOW),0);
+  s.just=s.old*(1+s.justChg); s.gapPct=s.price/s.just-1;
+  s.suppEv=Object.entries(t.w).reduce((a,[k,w])=>a+w*chg(k,EVENT),0);
+  const fx=v.imp?FX0[v.cur]*(1+chg(v.cur==='USD'?'usdinr':'cnyinr',NOW)):1;
+  s.landMult=v.imp?fx*(1+t.f*(1+chg('freight',NOW))+t.d):1;
+  s.annual=Math.max(0,s.price-s.just)*s.vol*12*s.landMult;
+  s.status=!s.affected?'No change':s.gapPct>.03?'Overcharged':s.gapPct>0?'Watching':'Fair';
+}
+SK.forEach(calc);
+const neg={}; // vendorId -> status
+let ranked; function rankVendors(){
+  VEND.forEach(v=>{
+    const a=SK.filter(s=>s.vendor===v.id&&s.affected); v.aff=a; v.n=SK.filter(s=>s.vendor===v.id).length;
+    v.annual=a.reduce((x,s)=>x+s.annual,0);
+    const sp=a.reduce((x,s)=>x+s.price*s.vol,0)||1;
+    v.inc=a.reduce((x,s)=>x+(s.price/s.old-1)*s.price*s.vol,0)/sp;
+    v.supp=a.reduce((x,s)=>x+s.suppEv*s.price*s.vol,0)/sp;
+    v.justNow=a.reduce((x,s)=>x+s.justChg*s.price*s.vol,0)/sp;
+  });
+  ranked=[...VEND].filter(v=>v.event).sort((a,b)=>b.annual-a.annual);
+}
+rankVendors();
+['Draft','Draft','Sent','Sent','Countered','Accepted','Rejected'].forEach((s,i)=>neg[ranked[i].id]=s);
+
+/* ================= formatting ================= */
+const inr=n=>n>=1e7?'₹'+(n/1e7).toFixed(2)+' Cr':n>=1e5?'₹'+(n/1e5).toFixed(1)+' L':'₹'+Math.round(n).toLocaleString('en-IN');
+const pm=(n,cur)=>SYM[cur]+Number(n).toFixed(2);
+const pct=(n,d=1)=>(n>=0?'+':'')+(n*100).toFixed(d)+'%';
+const pill=s=>`<span class="pill ${s==='Overcharged'?'p-red':s==='Fair'?'p-green':s==='Watching'?'p-amber':'p-grey'}">${s}</span>`;
+const orig=v=>`<span class="pill ${v.imp?'p-blue':'p-grey'}">${v.imp?'Imported · '+v.cur:'Domestic'}</span>`;
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',1800)}
+
+/* ================= charts ================= */
+function lineChart(series,opt={}){
+  const W=640,H=opt.h||210,pl=46,pr=10,pt=10,pb=24;
+  const all=series.flatMap(s=>s.data); let lo=Math.min(...all),hi=Math.max(...all); const pv=(hi-lo)*.1||1; lo-=pv;hi+=pv;
+  const X=i=>pl+(W-pl-pr)*i/(N-1),Y=v=>pt+(H-pt-pb)*(1-(v-lo)/(hi-lo));
+  let g=''; for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4,y=Y(v);g+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="var(--border)"/><text x="${pl-6}" y="${y+4}" text-anchor="end">${opt.fmt?opt.fmt(v):v.toFixed(0)}</text>`}
+  [0,40,80,119].forEach(d=>g+=`<text x="${X(d)}" y="${H-6}" text-anchor="middle">${d===119?'Today':'Day '+d}</text>`);
+  const mk=opt.marker!=null?`<line x1="${X(opt.marker)}" x2="${X(opt.marker)}" y1="${pt}" y2="${H-pb}" stroke="var(--red)" stroke-dasharray="4 3"/><text x="${X(opt.marker)+4}" y="${pt+10}" style="fill:var(--red)">Vendor increase</text>`:'';
+  const p=series.map(s=>`<path d="${s.data.map((v,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)).join(' ')}" fill="none" stroke="${s.c}" stroke-width="${s.w||2}" stroke-linejoin="round"/>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%">${g}${mk}${p}</svg>`;
+}
+const legend=a=>`<div class="legend">${a.map(i=>`<span><b style="background:${i.c}"></b>${i.n}</span>`).join('')}</div>`;
+function spark(data,c){const w=100,h=24,lo=Math.min(...data),hi=Math.max(...data);return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}"><path d="${data.map((v,i)=>(i?'L':'M')+(i/(data.length-1)*w).toFixed(1)+' '+(h-2-(v-lo)/(hi-lo||1)*(h-4)).toFixed(1)).join(' ')}" fill="none" stroke="${c}" stroke-width="1.6"/></svg>`}
+const COL=['var(--c1)','var(--c2)','var(--c3)','var(--c4)','var(--c5)'];
+function driverStrip(ids){return `<div class="strip">${ids.map((id,i)=>{const c=chg(id,NOW);return `<div class="drv"><div class="t">${D[id].name}</div><div class="p ${c>0?'red':'green'}">${pct(c)}</div>${spark(D[id].s,COL[i%5])}</div>`}).join('')}</div>`}
+
+/* ================= state & views ================= */
+const st={role:'exec',route:'dashboard',vendor:V.v0.id,sku:SK[0].id,tone:'Collaborative',tpl:'cell',
+  sk:{q:'',vendor:'',cat:'',origin:'',status:'All',sort:'annual',dir:-1,page:1},sel:new Set()};
+const reviewCount=()=>SK.filter(s=>s.review).length;
+const NAV=[['dashboard','Dashboard'],['vendors','Vendors'],['skus','Components'],['review','Review queue'],['templates','Templates'],['drivers','Drivers'],['import','Import'],['negotiations','Negotiations']];
+const TITLES={dashboard:()=>st.role==='exec'?'Executive summary':'Procurement dashboard',vendors:()=>'Vendors',vendor:()=>V[st.vendor].name,skus:()=>'Components',sku:()=>'Component detail',review:()=>'Template review queue',templates:()=>'Category templates',drivers:()=>'Cost drivers',import:()=>'Import',negotiations:()=>'Negotiations',brief:()=>'Negotiation brief'};
+
+function kpis(){
+  const tot=SK.reduce((a,s)=>a+s.annual,0), open=Object.values(neg).filter(x=>['Draft','Sent','Countered'].includes(x)).length;
+  const k=(t,v,s)=>`<div class="card kpi"><h3>${t}</h3><div class="v">${v}</div><div class="s">${s}</div></div>`;
+  return `<div class="grid g4">${k('Overpaid per year',`<span class="red">${inr(tot)}</span>`,`${SK.filter(s=>s.status==='Overcharged').length} components above justified price`)}
+   ${k('Recovered this year',`<span class="green">₹1.84 Cr</span>`,'from 9 closed negotiations')}
+   ${k('Open negotiations',open,'across '+open+' vendors')}
+   ${k('Need review',reviewCount(),'AI template matches below 80% confidence')}</div>`;
+}
+function bridgeCard(){ // landed-cost split for imports
+  const im=SK.filter(s=>V[s.vendor].imp&&s.affected); let ven=0,fx=0,fr=0,old=0;
+  im.forEach(s=>{const v=V[s.vendor],t=T[s.tpl],f0=FX0[v.cur],f1=f0*(1+chg(v.cur==='USD'?'usdinr':'cnyinr',NOW)),K0=1+t.f+t.d,m=s.vol*12;
+    old+=s.old*f0*K0*m; ven+=(s.price-s.old)*f0*K0*m; fx+=s.price*(f1-f0)*K0*m; fr+=s.price*f1*t.f*chg('freight',NOW)*m});
+  const mx=Math.max(Math.abs(ven),Math.abs(fx),Math.abs(fr)), row=(n,v,c)=>`<div class="wf"><span>${n}</span><div class="tr"><div class="f" style="left:0;width:${Math.abs(v)/mx*100}%;background:${c}"></div></div><b class="${v>0?'red':'green'}" style="text-align:right">${v>0?'+':'-'}${inr(Math.abs(v))}</b></div>`;
+  return `<div class="card"><h3>Imported components: why landed cost changed (per year)</h3>
+   ${row('Vendor price',ven,'var(--red)')}${row('FX (USD, CNY to INR)',fx,'var(--c4)')}${row('Container freight',fr,'var(--c3)')}
+   <div class="note">Only the vendor-price part is negotiable with the vendor. Total landed cost changed by ${pct((ven+fx+fr)/old)} on ${inr(old)} baseline spend.</div></div>`;
+}
+function execView(){
+  const byT=TPL.map(t=>[t,SK.filter(s=>s.tpl===t.id).reduce((a,s)=>a+s.annual,0)]).sort((a,b)=>b[1]-a[1]), mx=byT[0][1]||1;
+  return kpis()+`<div class="grid g2" style="margin-top:14px">
+   <div class="card"><h3>Overpayment by category</h3>${byT.filter(x=>x[1]>0).map(([t,v])=>`<div style="margin:9px 0"><div class="row" style="justify-content:space-between"><span>${t.name} <span class="muted">${t.imp?'· imported':''}</span></span><b>${inr(v)}</b></div><div class="bar" style="width:${Math.max(4,v/mx*100)}%;background:var(--accent)"></div></div>`).join('')}</div>
+   ${bridgeCard()}</div>
+   <div class="card" style="margin-top:14px"><h3>Top vendors by overpayment</h3>${ranked.slice(0,5).map(v=>`<div class="row" style="justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer" data-vendor="${v.id}"><span><b>${v.name}</b> ${orig(v)}</span><span><b class="red">${inr(v.annual)}</b> <span class="muted">/yr</span></span></div>`).join('')}</div>
+   <div class="card" style="margin-top:14px"><h3>Key drivers since old prices were set</h3>${driverStrip(['lith','cobalt','copper','resin','crude','usdinr','cnyinr','freight'])}</div>`;
+}
+function proView(){
+  const rb=reviewCount();
+  return kpis()+(rb?`<div class="banner p-amber" style="margin-top:14px"><span>${rb} components have an uncertain template match.</span><button class="btn sm" data-go="review">Open review queue</button></div>`:'<div style="height:14px"></div>')+
+  `<div class="card"><h3>Top negotiation opportunities (vendor events)</h3><div class="xscroll"><table><thead><tr><th>Vendor</th><th>Origin</th><th>Stated reason</th><th class="n">Vendor increase</th><th class="n">Drivers support now</th><th class="n">Components</th><th class="n">At stake / yr</th><th>Status</th><th></th></tr></thead><tbody>
+  ${ranked.slice(0,10).map(v=>`<tr class="click" data-vendor="${v.id}"><td><b>${v.name}</b></td><td>${orig(v)}</td><td class="muted">${v.claimTxt}</td><td class="n">${pct(v.inc)}</td><td class="n">${pct(v.justNow)}</td><td class="n">${v.aff.length}</td><td class="n red"><b>${inr(v.annual)}</b></td><td>${neg[v.id]?`<span class="pill p-blue">${neg[v.id]}</span>`:'<span class="muted">Not started</span>'}</td><td><button class="btn sm primary" data-neg="${v.id}">Negotiate</button></td></tr>`).join('')}</tbody></table></div></div>
+  <div class="grid g2" style="margin-top:14px">${bridgeCard()}<div class="card"><h3>Key drivers since old prices were set</h3>${driverStrip(['lith','cobalt','copper','resin','usdinr','freight'])}</div></div>`;
+}
+function vendorsView(){
+  return `<div class="card xscroll"><table><thead><tr><th>Vendor</th><th>Origin</th><th>Category</th><th class="n">Components</th><th>Stated reason</th><th class="n">Increase</th><th class="n">Supported at the time</th><th class="n">At stake / yr</th><th>Status</th></tr></thead><tbody>
+   ${[...VEND].sort((a,b)=>b.annual-a.annual).map(v=>`<tr class="click" data-vendor="${v.id}"><td><b>${v.name}</b></td><td>${orig(v)}</td><td>${T[v.tpl].name}</td><td class="n">${v.n}</td><td class="muted">${v.claimTxt||'No price event'}</td><td class="n">${v.event?pct(v.inc):'-'}</td><td class="n">${v.event?pct(v.supp):'-'}</td><td class="n ${v.annual?'red':''}">${v.annual?inr(v.annual):'-'}</td><td>${neg[v.id]?`<span class="pill p-blue">${neg[v.id]}</span>`:'<span class="muted">-</span>'}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function vendorAttr(v){
+  const a=v.aff; const sp=a.reduce((x,s)=>x+s.price*s.vol,0)||1, ids={};
+  a.forEach(s=>Object.entries(T[s.tpl].w).forEach(([k,w])=>{ids[k]=ids[k]||{w:0,c:0};ids[k].w+=w*s.price*s.vol/sp;ids[k].c+=w*chg(k,NOW)*s.price*s.vol/sp}));
+  return Object.entries(ids).map(([k,x])=>({id:k,name:D[k].name,w:x.w,mv:chg(k,NOW),c:x.c})).sort((p,q)=>Math.abs(q.c)-Math.abs(p.c));
+}
+function vendorView(){
+  const v=V[st.vendor]; if(!v.event) return `<div class="crumb" data-go="vendors">&larr; Vendors</div><div class="card">No open price event for this vendor. ${orig(v)}</div>`;
+  const at=vendorAttr(v), mx=Math.max(...at.map(x=>Math.abs(x.c)),.001), over=v.inc-v.supp;
+  const top=[...v.aff].sort((a,b)=>b.annual-a.annual).slice(0,12);
+  return `<div class="crumb" data-go="vendors">&larr; Vendors</div>
+  <div class="card row" style="justify-content:space-between;margin-bottom:14px"><div><b style="font-size:17px">${v.name}</b> ${orig(v)}<div class="muted" style="margin-top:4px">Price event on day ${EVENT}: "${v.claimTxt}" &middot; ${v.aff.length} of ${v.n} components raised</div></div>
+   <div class="row"><div style="text-align:right"><div class="muted" style="font-size:12px">At stake / year</div><b style="font-size:20px" class="red">${inr(v.annual)}</b></div>
+   <button class="btn" data-neg="${v.id}">Start negotiation</button><button class="btn primary" data-brief="${v.id}">Generate brief</button></div></div>
+  <div class="grid g4"><div class="card kpi"><h3>Vendor increase (avg)</h3><div class="v">${pct(v.inc)}</div></div><div class="card kpi"><h3>Supported at the time</h3><div class="v">${pct(v.supp)}</div><div class="s ${over>.02?'red':'green'}">${over>.02?'Increase exceeded drivers by '+(over*100).toFixed(1)+' pts':'In line with drivers'}</div></div>
+  <div class="card kpi"><h3>Supported today</h3><div class="v green">${pct(v.justNow)}</div></div><div class="card kpi"><h3>Gap today</h3><div class="v red">${pct((1+v.inc)/(1+v.justNow)-1)}</div></div></div>
+  <div class="grid g2" style="margin-top:14px"><div class="card"><h3>What explains this vendor's cost today</h3>${at.map(x=>`<div class="attr"><span>${x.name}<div class="muted" style="font-size:11px">${(x.w*100).toFixed(0)}% of price &middot; ${pct(x.mv)}</div></span><div class="track"><div class="mid"></div><div class="fill" style="${x.c>=0?'left:50%':'right:50%'};width:${Math.abs(x.c)/mx*50}%;background:${x.c>=0?'var(--red)':'var(--green)'}"></div></div><b class="${x.c>=0?'red':'green'}" style="text-align:right">${pct(x.c,2)}</b></div>`).join('')}
+   <div class="row" style="justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:8px"><b>Justified change</b><b>${pct(v.justNow,2)}</b></div></div>
+   <div class="card"><h3>Reading this</h3><p style="margin-top:0">${D[T[v.tpl].claim].name} is <b>${pct(chg(T[v.tpl].claim,NOW))}</b> versus when the old prices were set (it was ${pct(chg(T[v.tpl].claim,EVENT))} at the time of the increase).</p>
+   <p>${v.imp?`Quoted in ${v.cur}, so FX moves the landed ₹ cost but not the vendor's own price. Use the vendor price gap here and treat FX separately.`:'Quoted in INR, so there is no FX layer on this vendor.'}</p>
+   <p>Vendors usually buy inputs weeks ahead; expect pushback that the drop hasn't reached their cost yet (likely day 150 to 180).</p><div class="note">Market indicators, not contract prices.</div></div></div>
+  <div class="card" style="margin-top:14px"><h3>Largest overpayments</h3>${skuRows(top,false)}</div>`;
+}
+function skuRows(rows,chk){
+  return `<div class="xscroll"><table><thead><tr>${chk?'<th></th>':''}<th>Component</th><th>Category</th><th class="n">Old</th><th class="n">Price</th><th class="n">Justified</th><th class="n">Gap</th><th class="n">At stake / yr</th><th>Status</th></tr></thead><tbody>
+  ${rows.map(s=>{const v=V[s.vendor];return `<tr class="click" data-sku="${s.id}">${chk?`<td><input type="checkbox" data-sel="${s.id}" ${st.sel.has(s.id)?'checked':''}></td>`:''}<td><b>${s.name}</b><div class="muted" style="font-size:12px">${s.id} &middot; ${v.name}</div></td><td>${T[s.tpl].name}</td><td class="n muted">${pm(s.old,v.cur)}</td><td class="n">${pm(s.price,v.cur)}</td><td class="n">${pm(s.just,v.cur)}</td><td class="n ${s.gapPct>.03?'red':''}">${s.affected?pct(s.gapPct):'-'}</td><td class="n">${s.annual?inr(s.annual):'-'}</td><td>${pill(s.status)}</td></tr>`}).join('')||'<tr><td colspan="9" class="muted" style="padding:20px">No components match.</td></tr>'}</tbody></table></div>`;
+}
+/* ---- components data table ---- */
+const SORTS={name:s=>s.name,vendor:s=>V[s.vendor].name,price:s=>s.price,gap:s=>s.affected?s.gapPct:-9,annual:s=>s.annual,conf:s=>s.conf};
+function filtered(){const f=st.sk,q=f.q.toLowerCase();
+  const r=SK.filter(s=>(!q||(s.name+s.id+V[s.vendor].name).toLowerCase().includes(q))&&(!f.vendor||s.vendor===f.vendor)&&(!f.cat||s.tpl===f.cat)&&(!f.origin||(f.origin==='imp')===V[s.vendor].imp)&&(f.status==='All'||s.status===f.status));
+  const g=SORTS[f.sort]; return r.sort((a,b)=>{const x=g(a),y=g(b);return (x>y?1:x<y?-1:0)*f.dir});
+}
+function skuTable(){
+  const rows=filtered(),P=25,pages=Math.max(1,Math.ceil(rows.length/P)); if(st.sk.page>pages)st.sk.page=pages;
+  const page=rows.slice((st.sk.page-1)*P,st.sk.page*P);
+  let h=skuRows(page,true).replace(/<th>(Component|Gap|At stake \/ yr|Price)<\/th>/,m=>m);
+  return h+`<div class="pager"><span>${rows.length?(st.sk.page-1)*P+1:0}–${Math.min(rows.length,st.sk.page*P)} of ${rows.length} components</span><span class="row"><button class="btn sm" data-page="${st.sk.page-1}" ${st.sk.page<=1?'disabled':''}>Prev</button><span>Page ${st.sk.page} / ${pages}</span><button class="btn sm" data-page="${st.sk.page+1}" ${st.sk.page>=pages?'disabled':''}>Next</button></span></div>`;
+}
+function bulkBar(){return st.sel.size?`<div class="bulk"><span>${st.sel.size} selected</span><select id="bulkTpl">${TPL.map(t=>`<option value="${t.id}">${t.name}</option>`).join('')}</select><button class="btn sm" data-bulk="tpl">Assign template</button><button class="btn sm" data-bulk="neg">Start negotiation</button><button class="btn sm" data-bulk="clear">Clear</button></div>`:''}
+function skusView(){
+  const f=st.sk;
+  return `<div class="toolbar"><input id="q" placeholder="Search part, ID or vendor" value="${f.q}" style="min-width:230px">
+   <select data-ff="vendor"><option value="">All vendors</option>${VEND.map(v=>`<option value="${v.id}" ${f.vendor===v.id?'selected':''}>${v.name}</option>`).join('')}</select>
+   <select data-ff="cat"><option value="">All categories</option>${TPL.map(t=>`<option value="${t.id}" ${f.cat===t.id?'selected':''}>${t.name}</option>`).join('')}</select>
+   <select data-ff="origin"><option value="">Imported + domestic</option><option value="imp" ${f.origin==='imp'?'selected':''}>Imported</option><option value="dom" ${f.origin==='dom'?'selected':''}>Domestic</option></select>
+   <select data-ff="sort">${[['annual','Sort: at stake'],['gap','Sort: gap %'],['price','Sort: price'],['name','Sort: name'],['vendor','Sort: vendor'],['conf','Sort: confidence']].map(([k,l])=>`<option value="${k}" ${f.sort===k?'selected':''}>${l}</option>`).join('')}</select>
+   <button class="btn sm" data-export="1">Export CSV</button></div>
+   <div class="chips" style="margin-bottom:12px">${['All','Overcharged','Watching','Fair','No change'].map(x=>`<button class="chip ${f.status===x?'on':''}" data-f="${x}">${x}</button>`).join('')}</div>
+   <div id="bulk">${bulkBar()}</div><div class="card" id="skuTable">${skuTable()}</div>`;
+}
+function skuView(){
+  const s=SK.find(x=>x.id===st.sku), v=V[s.vendor], t=T[s.tpl], cur=v.cur, entries=Object.entries(t.w);
+  const vend=Array.from({length:N},(_,i)=>i<EVENT?s.old:s.price), jus=Array.from({length:N},(_,i)=>s.old*(1+entries.reduce((a,[k,w])=>a+w*chg(k,i),0)));
+  const mx=Math.max(...entries.map(([k,w])=>Math.abs(w*chg(k,NOW))),.001);
+  let bridge='';
+  if(v.imp){const f0=FX0[v.cur],fxid=v.cur==='USD'?'usdinr':'cnyinr',f1=f0*(1+chg(fxid,NOW)),K0=1+t.f+t.d,oldL=s.old*f0*K0,vend$=(s.price-s.old)*f0*K0,fx=s.price*(f1-f0)*K0,fr=s.price*f1*t.f*chg('freight',NOW),newL=oldL+vend$+fx+fr,m=Math.max(Math.abs(vend$),Math.abs(fx),Math.abs(fr),1e-6);
+    const r=(n,x,c)=>`<div class="wf"><span>${n}</span><div class="tr"><div class="f" style="left:0;width:${Math.abs(x)/m*100}%;background:${c}"></div></div><b class="${x>0?'red':'green'}" style="text-align:right">${x>0?'+':'-'}₹${Math.abs(x).toFixed(1)}</b></div>`;
+    bridge=`<div class="card"><h3>Landed cost bridge (₹ per unit)</h3><div class="wf"><span>Old landed cost</span><div></div><b style="text-align:right">₹${oldL.toFixed(1)}</b></div>${r('Vendor price',vend$,'var(--red)')}${r('FX '+v.cur+'/INR',fx,'var(--c4)')}${r('Freight',fr,'var(--c3)')}<div class="wf" style="border-top:1px solid var(--border);padding-top:6px"><b>Landed cost now</b><div></div><b style="text-align:right">₹${newL.toFixed(1)}</b></div><div class="note">Incl. duty ${(t.d*100).toFixed(1)}% and freight ${(t.f*100).toFixed(0)}% of value. Only the vendor-price line is negotiable with ${v.name}.</div></div>`}
+  return `<div class="crumb" data-go="skus">&larr; Components</div>
+  <div class="card row" style="justify-content:space-between;margin-bottom:14px"><div><b style="font-size:17px">${s.name}</b> <span class="muted">&middot; ${s.id}</span><div class="muted" style="margin-top:4px">${v.name} &middot; ${t.name} (template match ${(s.conf*100).toFixed(0)}%) &middot; ${s.vol.toLocaleString()} units/mo &middot; ${orig(v)}</div></div>
+   <div class="row"><div style="text-align:right"><div class="muted" style="font-size:12px">Vendor price</div><b style="font-size:20px">${pm(s.price,cur)}</b></div><div style="text-align:right"><div class="muted" style="font-size:12px">Justified now</div><b style="font-size:20px" class="green">${pm(s.just,cur)}</b></div><div style="text-align:right"><div class="muted" style="font-size:12px">At stake / yr</div><b style="font-size:20px" class="red">${s.annual?inr(s.annual):'-'}</b></div><button class="btn primary" data-brief="${v.id}">Vendor brief</button></div></div>
+  <div class="grid g2"><div class="card"><h3>Vendor price vs justified price (${cur})</h3>${lineChart([{data:vend,c:'var(--red)',w:2.4},{data:jus,c:'var(--green)',w:2.4}],{marker:s.affected?EVENT:null,fmt:x=>SYM[cur]+x.toFixed(2)})}${legend([{c:'var(--red)',n:'Vendor price'},{c:'var(--green)',n:'Justified price (from drivers)'}])}</div>
+   <div class="card"><h3>Cost drivers (index; old price set = 100)</h3>${lineChart(entries.slice(0,4).map(([k],i)=>({data:D[k].s,c:COL[i]})),{marker:s.affected?EVENT:null})}${legend(entries.slice(0,4).map(([k],i)=>({c:COL[i],n:D[k].name})))}</div></div>
+  <div class="grid g2" style="margin-top:14px"><div class="card"><h3>What explains the price today</h3>${entries.map(([k,w])=>{const c=w*chg(k,NOW);return `<div class="attr"><span>${D[k].name}<div class="muted" style="font-size:11px">${(w*100).toFixed(0)}% of price &middot; ${pct(chg(k,NOW))}</div></span><div class="track"><div class="mid"></div><div class="fill" style="${c>=0?'left:50%':'right:50%'};width:${Math.abs(c)/mx*50}%;background:${c>=0?'var(--red)':'var(--green)'}"></div></div><b class="${c>=0?'red':'green'}" style="text-align:right">${pct(c,2)}</b></div>`}).join('')}
+   <div class="row" style="justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:8px"><b>Justified change</b><b>${pct(s.justChg,2)}</b></div><div class="row" style="justify-content:space-between;margin-top:4px"><b>Vendor's actual change</b><b class="${s.affected?'red':''}">${pct(s.price/s.old-1,1)}</b></div></div>
+   ${bridge||`<div class="card"><h3>Domestic component</h3><p class="muted" style="margin:0">Quoted in INR from an Indian vendor, so there is no landed-cost layer. The vendor price gap is the whole story.</p></div>`}</div>`;
+}
+function reviewView(){
+  const q=SK.filter(s=>s.review).sort((a,b)=>a.conf-b.conf).slice(0,30);
+  if(!q.length) return '<div class="card">Review queue is empty. Every component has a confident template match.</div>';
+  return `<div class="banner p-blue"><span>${reviewCount()} components need a human check. Claude matched each component to the closest template, shown below with a confidence score.</span><button class="btn sm primary" data-accept="all">Accept all above 70%</button></div>
+  <div class="card xscroll"><table><thead><tr><th>Component</th><th>Vendor</th><th>Suggested template</th><th>Confidence</th><th></th></tr></thead><tbody>${q.map(s=>`<tr><td><b>${s.name}</b><div class="muted" style="font-size:12px">${s.id}</div></td><td>${V[s.vendor].name}</td><td><select data-retpl="${s.id}">${TPL.map(t=>`<option value="${t.id}" ${s.tpl===t.id?'selected':''}>${t.name}</option>`).join('')}</select></td><td><span class="pill ${s.conf<.6?'p-red':'p-amber'}">${(s.conf*100).toFixed(0)}%</span></td><td><button class="btn sm primary" data-accept="${s.id}">Accept</button></td></tr>`).join('')}</tbody></table></div><div class="note">Showing the 30 lowest-confidence items.</div>`;
+}
+function templatesView(){
+  const t=T[st.tpl], used=SK.filter(s=>s.tpl===t.id).length, tw=Object.values(t.w).reduce((a,b)=>a+b,0);
+  return `<div class="grid g2"><div class="card"><h3>Starter library</h3><table><thead><tr><th>Template</th><th>Origin</th><th class="n">Components</th></tr></thead><tbody>${TPL.map(x=>`<tr class="click" data-tpl="${x.id}" style="${x.id===st.tpl?'background:var(--accent-soft)':''}"><td><b>${x.name}</b></td><td><span class="pill ${x.imp?'p-blue':'p-grey'}">${x.imp?'Imported':'Domestic'}</span></td><td class="n">${SK.filter(s=>s.tpl===x.id).length}</td></tr>`).join('')}</tbody></table></div>
+  <div class="card"><h3>${t.name}</h3><table><thead><tr><th>Driver</th><th>Source</th><th class="n">Share of price</th></tr></thead><tbody>${Object.entries(t.w).map(([k,w])=>`<tr><td>${D[k].name}</td><td class="muted">${D[k].src}</td><td class="n"><input value="${(w*100).toFixed(0)}%" style="width:70px;text-align:right"></td></tr>`).join('')}<tr><td colspan="2"><b>Total explained</b></td><td class="n"><b>${(tw*100).toFixed(0)}%</b></td></tr></tbody></table>
+  ${t.imp?`<div class="note">Landed-cost layer: freight ${(t.f*100).toFixed(0)}% of value, duty ${(t.d*100).toFixed(1)}%.</div>`:''}<div class="note">${used} components use this template. The remainder of the price (labor, margin, other inputs) is treated as not driver-linked. Edits apply to all components that haven't been overridden.</div></div></div>`;
+}
+function driversView(){
+  return `<div class="banner p-blue"><span>Free sources cover copper, aluminum, crude and FX. Battery materials (lithium, cobalt, nickel, resin, freight) use benchmarks you upload.</span><button class="btn sm primary" data-toast="Upload dialog opens here (CSV: date, value)">Upload benchmark CSV</button></div>
+  <div class="card xscroll"><table><thead><tr><th>Driver</th><th>Type</th><th>Source</th><th class="n">At event</th><th class="n">Today</th><th>Trend</th></tr></thead><tbody>${DR.map((d,i)=>`<tr><td><b>${d.name}</b></td><td>${d.type}</td><td><span class="pill ${d.src.startsWith('Manual')?'p-amber':'p-green'}">${d.src}</span></td><td class="n">${pct(chg(d.id,EVENT))}</td><td class="n ${chg(d.id,NOW)>0?'red':'green'}">${pct(chg(d.id,NOW))}</td><td>${spark(d.s,COL[i%5])}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function importView(){
+  const ok=SK.filter(s=>!s.review).length;
+  return `<div class="grid g2"><div class="card"><h3>1. Upload component list</h3><div class="drop">Drop a CSV or Excel file here<br><button class="btn sm" style="margin-top:10px" data-toast="File picker opens here">Choose file</button></div>
+   <div class="note">Needed columns: vendor, part number, description, quote currency, price, effective date, monthly volume. Optional: old price history.</div></div>
+  <div class="card"><h3>2. Map columns</h3><table><tbody>${[['vendor','Supplier Name'],['part number','Item Code'],['description','Item Description'],['quote currency','Curr'],['price','Unit Price'],['monthly volume','Avg Monthly Qty']].map(([a,b])=>`<tr><td>${a}</td><td><select><option>${b}</option></select></td><td class="green">matched</td></tr>`).join('')}</tbody></table></div></div>
+  <div class="card" style="margin-top:14px"><h3>3. Result of last import (demo)</h3><div class="grid g4"><div class="kpi"><div class="s">Rows read</div><div class="v">${SK.length}</div></div><div class="kpi"><div class="s">Template auto-assigned</div><div class="v green">${ok}</div></div><div class="kpi"><div class="s">Need review</div><div class="v" style="color:var(--amber)">${reviewCount()}</div></div><div class="kpi"><div class="s">Rows with errors</div><div class="v red">3</div></div></div><div class="note">Errors (e.g. missing currency, negative price) are listed in a downloadable report.</div></div>`;
+}
+function negView(){
+  const cols=['Draft','Sent','Countered','Accepted','Rejected'];
+  return `<div class="board">${cols.map(c=>{const vs=Object.entries(neg).filter(([,s])=>s===c).map(([id])=>V[id]);return `<div class="col"><h4>${c}<span class="muted">${vs.length}</span></h4>${vs.map(v=>`<div class="tk" data-vendor="${v.id}"><b>${v.name}</b><div class="muted">${v.claimTxt}</div><div style="margin-top:4px">${c==='Accepted'?'Saved '+inr(v.annual*.6)+'/yr':c==='Rejected'?'Contract fixed until Mar':inr(v.annual)+'/yr at stake'}</div></div>`).join('')}</div>`}).join('')}</div>`;
+}
+function briefView(){
+  const v=V[st.vendor], t=T[v.tpl], at=vendorAttr(v), tone=st.tone;
+  const open={Collaborative:'Thank you for the continued partnership. We would like to review the recent price change together, given how input costs have moved since.',Firm:'The input costs cited in your price increase have partly reversed. We are requesting a price revision.',Neutral:'We are writing to request a review of the prices below, based on movements in the cost drivers cited.'}[tone];
+  const top=[...v.aff].sort((a,b)=>b.annual-a.annual).slice(0,8), tot=v.aff.reduce((a,s)=>a+s.annual,0);
+  return `<div class="row noprint" style="justify-content:space-between;margin-bottom:12px"><div class="row"><span class="muted">Vendor</span><select data-bv="1">${ranked.map(x=>`<option value="${x.id}" ${x.id===v.id?'selected':''}>${x.name}</option>`).join('')}</select><span class="muted">Tone</span><div class="seg">${['Collaborative','Firm','Neutral'].map(x=>`<button data-t="${x}" class="${tone===x?'on':''}">${x}</button>`).join('')}</div></div><div class="row"><button class="btn" id="copyBtn">Copy as email</button><button class="btn primary" onclick="window.print()">Export PDF</button></div></div>
+  <div class="doc" contenteditable="true" spellcheck="false"><div style="color:#667085;font-size:12px">To: ${v.name}, Sales / Key Accounts &middot; From: Volta Energy Procurement</div>
+  <h2>Price review request: ${t.name} range (${v.aff.length} components)</h2><p>${open}</p>
+  <p>On [date] prices on ${v.aff.length} components were raised by an average of <b>${pct(v.inc)}</b>, citing "${v.claimTxt}". At that time the cost drivers supported about <b>${pct(v.supp)}</b>. Since then the drivers have moved as follows, and today they support about <b>${pct(v.justNow)}</b>.</p>
+  <table style="margin:10px 0"><thead><tr><th>Cost driver</th><th style="text-align:right">Share of price</th><th style="text-align:right">Market move</th><th style="text-align:right">Impact</th></tr></thead><tbody>${at.map(x=>`<tr><td>${x.name}</td><td style="text-align:right">${(x.w*100).toFixed(0)}%</td><td style="text-align:right">${pct(x.mv)}</td><td style="text-align:right">${pct(x.c,2)}</td></tr>`).join('')}<tr><td colspan="3"><b>Total justified change</b></td><td style="text-align:right"><b>${pct(v.justNow,2)}</b></td></tr></tbody></table>
+  <p>Proposed revision for the highest-volume components:</p>
+  <table style="margin:10px 0"><thead><tr><th>Component</th><th style="text-align:right">Current</th><th style="text-align:right">Proposed</th></tr></thead><tbody>${top.map(s=>`<tr><td>${s.name}</td><td style="text-align:right">${pm(s.price,v.cur)}</td><td style="text-align:right"><b>${pm(s.just,v.cur)}</b></td></tr>`).join('')}</tbody></table>
+  ${v.imp?`<p>We note prices are quoted in ${v.cur}; this request concerns the ${v.cur} price only and is independent of exchange-rate movements.</p>`:''}
+  <p>We propose these revisions apply from the next order cycle, and we are glad to walk through the cost assumptions with you.</p>
+  <p style="color:#667085;font-size:12px">Estimates use public market indicators and buyer-supplied benchmarks, and approximate cost movement. They are not contract prices.</p></div>`;
+}
+function render(){
+  document.getElementById('nav').innerHTML=NAV.map(([k,l])=>`<a data-go="${k}" class="${st.route===k||(st.route==='vendor'&&k==='vendors')||(st.route==='sku'&&k==='skus')||(st.route==='brief'&&k==='negotiations')?'on':''}"><span>${l}</span>${k==='review'&&reviewCount()?`<span class="badge">${reviewCount()}</span>`:''}</a>`).join('');
+  document.querySelectorAll('#roleSeg button').forEach(b=>b.classList.toggle('on',b.dataset.r===st.role));
+  document.getElementById('title').textContent=TITLES[st.route]();
+  document.getElementById('view').innerHTML=({dashboard:()=>st.role==='exec'?execView():proView(),vendors:vendorsView,vendor:vendorView,skus:skusView,sku:skuView,review:reviewView,templates:templatesView,drivers:driversView,import:importView,negotiations:negView,brief:briefView})[st.route]();
+}
+function refreshSkus(){const t=document.getElementById('skuTable');if(t){t.innerHTML=skuTable();document.getElementById('bulk').innerHTML=bulkBar()}}
+function recalcAll(){SK.forEach(calc);rankVendors()}
+
+/* ================= events ================= */
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-go],[data-r],[data-vendor],[data-sku],[data-neg],[data-brief],[data-f],[data-page],[data-bulk],[data-export],[data-accept],[data-tpl],[data-t],[data-toast],#copyBtn,#themeBtn');
+  if(!t||e.target.matches('input,select'))return; const d=t.dataset;
+  if(t.id==='themeBtn'){const r=document.documentElement,cur=r.dataset.theme||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');r.dataset.theme=cur==='dark'?'light':'dark';return}
+  if(t.id==='copyBtn'){navigator.clipboard&&navigator.clipboard.writeText(document.querySelector('.doc').innerText);toast('Copied to clipboard');return}
+  if(d.toast){toast(d.toast);return}
+  if(d.neg){if(!neg[d.neg])neg[d.neg]='Draft';st.vendor=d.neg;toast('Negotiation started for '+V[d.neg].name);render();return}
+  if(d.brief){st.vendor=d.brief;st.route='brief'}
+  else if(d.sku){st.sku=d.sku;st.route='sku'}
+  else if(d.vendor){st.vendor=d.vendor;st.route='vendor'}
+  else if(d.go){st.route=d.go}
+  else if(d.r){st.role=d.r;st.route='dashboard'}
+  else if(d.f){st.sk.status=d.f;st.sk.page=1}
+  else if(d.page){st.sk.page=+d.page;refreshSkus();return}
+  else if(d.t){st.tone=d.t}
+  else if(d.tpl){st.tpl=d.tpl}
+  else if(d.export){const csv='id,name,vendor,price,justified,gap_pct,annual_inr,status\n'+filtered().map(s=>[s.id,'"'+s.name+'"','"'+V[s.vendor].name+'"',s.price,s.just.toFixed(3),(s.gapPct*100).toFixed(2),Math.round(s.annual),s.status].join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='components.csv';a.click();toast('Exported '+filtered().length+' rows');return}
+  else if(d.bulk){const ids=[...st.sel];
+    if(d.bulk==='clear')st.sel.clear();
+    if(d.bulk==='tpl'){const tp=document.getElementById('bulkTpl').value;ids.forEach(i=>{const s=SK.find(x=>x.id===i);s.tpl=tp;s.review=false;s.conf=1});recalcAll();st.sel.clear();toast('Template assigned to '+ids.length+' components')}
+    if(d.bulk==='neg'){const vs=new Set(ids.map(i=>SK.find(x=>x.id===i).vendor));let c=0;vs.forEach(v=>{if(V[v].event&&!neg[v]){neg[v]='Draft';c++}});st.sel.clear();toast(c+' negotiation(s) started')}
+    render();return}
+  else if(d.accept){if(d.accept==='all')SK.forEach(s=>{if(s.review&&s.conf>=.7)s.review=false});else{const s=SK.find(x=>x.id===d.accept);s.review=false}}
+  render();window.scrollTo(0,0);
+});
+document.addEventListener('input',e=>{if(e.target.id==='q'){st.sk.q=e.target.value;st.sk.page=1;refreshSkus()}});
+document.addEventListener('change',e=>{const el=e.target,d=el.dataset;
+  if(d.ff){st.sk[d.ff]=el.value;if(d.ff==='sort')st.sk.dir=el.value==='name'||el.value==='vendor'?1:-1;st.sk.page=1;refreshSkus();return}
+  if(d.sel){el.checked?st.sel.add(d.sel):st.sel.delete(d.sel);document.getElementById('bulk').innerHTML=bulkBar();return}
+  if(d.retpl){const s=SK.find(x=>x.id===d.retpl);s.tpl=el.value;calc(s);rankVendors();return}
+  if(d.bv){st.vendor=el.value;render()}
+});
+render();
+</script>
+</body>
+</html>
