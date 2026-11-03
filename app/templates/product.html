@@ -40,8 +40,8 @@
 {% if not has_zoho %}<div class="flash info">No Zoho purchases found yet, so components cannot be matched to your vendors' rates. <a href="{{ url_for('connect') }}">Connect Zoho</a> and sync first.</div>{% endif %}
 
 {% if comps %}
-<div class="card xscroll"><table>
-  <thead><tr><th>Component</th><th class="n">Qty</th><th>Cost-driver template</th><th>Matched Zoho item</th><th class="n">Tracked rate</th><th></th></tr></thead>
+<div class="card xscroll"><table class="comps">
+  <thead><tr><th>Component</th><th class="n">Qty</th><th>Cost-driver template</th><th>Matched Zoho item</th><th class="n">Tracked rate</th><th>Actions</th></tr></thead>
   <tbody>
   {% for c in comps %}
     <tr>
@@ -52,14 +52,15 @@
       <td class="n">{% if c.tracked %}<b>{{ c.tracked.cur }} {{ c.tracked.latest|money }}</b><div class="muted small">{{ c.tracked.vendor }} · {{ c.tracked.date }}{% if c.tracked.change is not none %} · {{ c.tracked.change|pctpts }}{% endif %}</div>{% else %}<span class="muted">–</span>{% endif %}</td>
       <td class="n" style="white-space:nowrap">
         <form id="f{{ c.id }}" method="post" action="{{ url_for('work.component_update', pid=p.id, cid=c.id) }}" style="display:inline"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn sm">Save</button></form>
-        {% if c.tracked %}<a class="btn sm primary" href="{{ url_for('work.talking_points', pid=p.id, cid=c.id) }}">Talking points</a>{% endif %}
+        {% if c.tracked %}<a class="btn sm primary" href="{{ url_for('work.talking_points', pid=p.id, cid=c.id) }}">Talking points</a>
+        {% else %}<span class="btn sm off" title="Match this component to a Zoho item first (Matched Zoho item column), then press Save">Talking points</span>{% endif %}
         <form method="post" action="{{ url_for('work.component_delete', pid=p.id, cid=c.id) }}" style="display:inline"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn sm danger" aria-label="Remove">✕</button></form>
       </td>
     </tr>
   {% endfor %}
   </tbody>
 </table></div>
-<p class="note">Template and Zoho item were chosen automatically from the component's name. Change them and press Save if they are wrong. "Talking points" appears once a component is matched to a Zoho item.</p>
+<p class="note">Template and Zoho item were chosen automatically from the component's name. Change them and press Save if they are wrong. The blue "Talking points" button is active only for components matched to a Zoho item; pick the item in "Matched Zoho item" and press Save.</p>
 {% else %}
 <div class="card muted">No components yet. Add some above.</div>
 {% endif %}
