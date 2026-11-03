@@ -33,6 +33,10 @@ h1{font-size:22px;margin:0 0 6px} h2{font-size:17px;margin:0 0 8px} h3{font-size
 .connectors{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin:18px 0 4px}
 .cc{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
 .cc.ready{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.grid3 .card{margin:16px 0 0}
+.points{padding-left:20px;margin:10px 0} .points li{margin:8px 0}
+input[type=file]{padding:6px;max-width:100%}
 .cc{align-items:flex-start}
 .cc .cstat{margin-top:8px}
 .cc.soon{opacity:.6}

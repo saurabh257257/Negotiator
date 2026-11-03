@@ -17,8 +17,27 @@ Helps battery/EV manufacturers renegotiate vendor prices. See [PLAN.md](PLAN.md)
    min to max, change, trend). Selecting a product shows its rate history chart, every purchase, and how
    other vendors price the same product (flagged "lowest" or "+x% vs lowest"). Search covers vendors and
    products.
+5. **Products and components (E9)**: define a product (e.g. "48V LFP pack") and its components by adding
+   them by hand or uploading an **Excel / CSV** list (columns such as "Component", "Qty", "Unit"). Each
+   component gets a cost-driver template (rule-based, editable) and is matched to the closest item you buy
+   in Zoho (editable), so its real vendor rates are tracked.
+6. **Cost drivers (E3-lite)**: free market series (copper, aluminum, crude oil, USD/INR, CNY/INR) from
+   Yahoo Finance with one click, plus CSV benchmark upload (`date,value`) for lithium, cobalt, nickel,
+   steel, resin, epoxy raw materials, electronics and freight, which have no free source.
+7. **Talking points (E7)**: for a matched component, the cost drivers' movement since your first purchase
+   is turned into a justified price, the gap to what you pay, and talking points for the vendor. Numbers
+   are computed in code; with an API key AI rewrites them, otherwise template text is used.
+8. **AI features (E8, optional)**: "Generate components with AI", PDF component lists and AI-written
+   talking points. They need `ANTHROPIC_API_KEY` in `.env`; without it they show "not configured".
 
-The Zoho pull is plain deterministic code. No AI runs on the server.
+The Zoho pull and everything above except the optional AI features is plain deterministic code.
+
+### Known limitations
+- Driver weights per template are starter estimates (see `app/catalog.py`), not validated against real BOMs.
+- Only % change of a driver is used; copper/aluminum/crude are USD series, so INR-quoted items do not yet
+  include the USD/INR effect unless that driver is in the template.
+- CNY/INR from Yahoo currently returns only one data point.
+- PDF reading and AI generation have unit tests with a faked AI, but have not been run against the real API.
 
 ### Important: how "category" works
 Zoho Books does not store a product category on items or bill lines (that exists in Zoho Inventory only).

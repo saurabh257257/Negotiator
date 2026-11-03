@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Talking points · Negotiator{% endblock %}
+{% block body %}
+<div class="crumb"><a href="{{ url_for('work.products') }}">Products</a> › <a href="{{ url_for('work.product', pid=p.id) }}">{{ p.name }}</a> › {{ c.name }}</div>
+<h1>Talking points: {{ c.name }}</h1>
+
+{% if error %}
+<div class="card warn">{{ error }} <a href="{{ url_for('work.product', pid=p.id) }}">Back to the product</a></div>
+{% else %}
+<div class="row spread">
+  <p class="muted">{{ facts.vendor }} · {{ facts.matched_item }} · template: {{ facts.template }}</p>
+  {% if facts.vendors_available|length > 1 %}
+  <form method="get" class="row"><label class="inline">Vendor
+    <select name="vendor" onchange="this.form.submit()">{% for v in facts.vendors_available %}<option value="{{ v.id }}" {{ 'selected' if v.id == facts.vendor_id }}>{{ v.name }}</option>{% endfor %}</select></label></form>
+  {% endif %}
+</div>
+
+<div class="tiles">
+  <div class="card"><div class="muted">Latest rate</div><div class="big">{{ facts.currency }} {{ facts.latest_rate|money }}</div><div class="muted small">{{ facts.latest_date }}</div></div>
+  <div class="card"><div class="muted">Justified by drivers today</div><div class="big">{% if facts.justified_price is not none %}{{ facts.currency }} {{ facts.justified_price|money }}{% else %}–{% endif %}</div><div class="muted small">from {{ facts.first_rate|money }} on {{ facts.first_date }}</div></div>
+  <div class="card"><div class="muted">Gap</div><div class="big {{ 'up' if facts.gap is not none and facts.gap > 0.01 }}">{{ facts.gap|pct }}</div></div>
+  <div class="card"><div class="muted">Vendor change</div><div class="big">{{ facts.vendor_change|pct }}</div><div class="muted small">{{ facts.purchases }} purchase{{ '' if facts.purchases == 1 else 's' }}</div></div>
+  <div class="card"><div class="muted">Market data coverage</div><div class="big">{{ '%.0f'|format(facts.coverage * 100) }}%</div></div>
+</div>
+
+<section class="card">
+  <div class="row spread"><h3 style="margin:0">Talking points {% if source == 'ai' %}<span class="pill ok">AI-written</span>{% else %}<span class="pill soon">template-written</span>{% endif %}</h3>
+    <button class="btn sm" id="copy">Copy</button></div>
+  <ol id="points" class="points">{% for t in points %}<li>{{ t }}</li>{% endfor %}</ol>
+  <p class="note">The numbers are computed from your Zoho purchases and the cost-driver series. They are estimates from public indicators, not the vendor's actual costs.</p>
+</section>
+
+<section class="card xscroll">
+  <h3>Cost drivers behind this component</h3>
+  <table><thead><tr><th>Driver</th><th class="n">Share of price</th><th class="n">Move at the increase</th><th class="n">Move since {{ facts.first_date }}</th><th class="n">Impact on price</th></tr></thead><tbody>
+  {% for r in facts.drivers %}<tr><td>{{ r.driver }}</td><td class="n">{{ '%.0f'|format(r.weight * 100) }}%</td>
+    <td class="n">{{ r.change_at_increase|pct }}</td>
+    <td class="n">{% if r.has_data %}{{ r.change_since|pct }}{% else %}<span class="muted">no data</span>{% endif %}</td>
+    <td class="n">{{ r.impact_since|pct(2) }}</td></tr>{% endfor %}
+  </tbody></table>
+  {% if facts.coverage < 1 %}<p class="note">Rows with "no data" need a benchmark: <a href="{{ url_for('work.drivers_page') }}">Cost drivers</a>.</p>{% endif %}
+</section>
+<script>
+document.getElementById('copy').addEventListener('click', e => {
+  const t = [...document.querySelectorAll('#points li')].map((l, i) => (i + 1) + '. ' + l.textContent).join('\n');
+  navigator.clipboard && navigator.clipboard.writeText(t); e.target.textContent = 'Copied'; setTimeout(() => e.target.textContent = 'Copy', 1200);
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -30,6 +30,9 @@ ZOHO_DC = os.getenv("ZOHO_DC", "in").strip().lower()
 ZOHO_REDIRECT_URI = os.getenv("ZOHO_REDIRECT_URI", "http://localhost:5055/oauth/callback").strip()
 ZOHO_MIN_INTERVAL = float(os.getenv("ZOHO_MIN_INTERVAL", "0.7"))
 
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "").strip()
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5-5").strip()
+
 AUTH_DEMO = os.getenv("AUTH_DEMO", "1") == "1"
 DEMO_MOBILE = os.getenv("DEMO_MOBILE", "123").strip()
 

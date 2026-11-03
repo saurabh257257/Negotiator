@@ -2,11 +2,10 @@ import re
 import secrets
 import time
 from datetime import datetime, timezone
-from functools import wraps
-
 from flask import Flask, abort, flash, jsonify, redirect, render_template, request, session, url_for
 
 from . import analysis, config, db, zoho
+from .auth import login_required
 from .connectors import CONNECTORS
 
 API_DOMAIN_RE = re.compile(r"^https://([a-z0-9-]+\.)*zohoapis\.[a-z.]+$")
@@ -15,8 +14,11 @@ API_DOMAIN_RE = re.compile(r"^https://([a-z0-9-]+\.)*zohoapis\.[a-z.]+$")
 def create_app():
     app = Flask(__name__)
     app.secret_key = config.SECRET_KEY
-    app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
+    app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
+                      MAX_CONTENT_LENGTH=6 * 1024 * 1024)
     db.init()
+    from .work import bp as work_bp
+    app.register_blueprint(work_bp)
 
     # ------------------------------------------------------------ helpers
     @app.before_request
@@ -36,13 +38,15 @@ def create_app():
     def money(value):
         return f"{value:,.2f}"
 
-    def login_required(view):
-        @wraps(view)
-        def wrapper(*a, **kw):
-            if not session.get("mobile"):
-                return redirect(url_for("login"))
-            return view(*a, **kw)
-        return wrapper
+    @app.template_filter("pct")
+    def pct(value, digits=1):
+        """Fraction (0.05) -> '+5.0%'. None -> en dash."""
+        return "–" if value is None else f"{value * 100:+.{digits}f}%"
+
+    @app.template_filter("pctpts")
+    def pctpts(value):
+        """Already-a-percentage value (5.0) -> '+5.0%'."""
+        return "–" if value is None else f"{value:+.1f}%"
 
     def connection():
         with db.connect() as conn:

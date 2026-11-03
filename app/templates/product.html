@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ p.name }} · Negotiator{% endblock %}
+{% block body %}
+<div class="crumb"><a href="{{ url_for('work.products') }}">Products</a> › {{ p.name }}</div>
+<div class="row spread">
+  <div><h1>{{ p.name }}</h1><p class="muted">{{ p.description or 'No description' }}</p></div>
+  <form method="post" action="{{ url_for('work.product_delete', pid=p.id) }}" onsubmit="return confirm('Delete this product and its components?')"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn danger">Delete product</button></form>
+</div>
+
+<div class="grid3">
+  <section class="card">
+    <h3>Add by hand</h3>
+    <form method="post" action="{{ url_for('work.component_add', pid=p.id) }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <label for="cn">Component</label><input id="cn" name="name" required maxlength="200" placeholder="e.g. LFP prismatic cell 280Ah">
+      <div class="row" style="margin-top:8px"><div><label for="cq">Qty</label><input id="cq" name="qty" value="1" style="width:80px"></div><div><label for="cu">Unit</label><input id="cu" name="unit" placeholder="pcs" style="width:80px"></div></div>
+      <button class="btn sm" style="margin-top:10px">Add</button>
+    </form>
+  </section>
+  <section class="card">
+    <h3>Upload a component list</h3>
+    <form method="post" action="{{ url_for('work.component_upload', pid=p.id) }}" enctype="multipart/form-data">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <input type="file" name="file" accept=".xlsx,.csv,.pdf" required>
+      <p class="note">Excel or CSV with a column such as "Component" or "Description" (and optionally "Qty", "Unit"). PDF needs AI{{ '' if ai_on else ' (not configured)' }}. Max 5 MB.</p>
+      <button class="btn sm">Upload</button>
+    </form>
+  </section>
+  <section class="card">
+    <h3>Generate with AI</h3>
+    <form method="post" action="{{ url_for('work.component_generate', pid=p.id) }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <p class="note" style="margin-top:0">AI suggests the components needed to build this product, based on its name and description. Review the list afterwards.</p>
+      <button class="btn sm primary" {{ '' if ai_on else 'disabled' }}>Generate components</button>
+      {% if not ai_on %}<p class="note">Not configured: set <code>ANTHROPIC_API_KEY</code> in <code>.env</code> to enable.</p>{% endif %}
+    </form>
+  </section>
+</div>
+
+{% if not has_zoho %}<div class="flash info">No Zoho purchases found yet, so components cannot be matched to your vendors' rates. <a href="{{ url_for('connect') }}">Connect Zoho</a> and sync first.</div>{% endif %}
+
+{% if comps %}
+<div class="card xscroll"><table>
+  <thead><tr><th>Component</th><th class="n">Qty</th><th>Cost-driver template</th><th>Matched Zoho item</th><th class="n">Tracked rate</th><th></th></tr></thead>
+  <tbody>
+  {% for c in comps %}
+    <tr>
+      <td><b>{{ c.name }}</b><div class="muted small">{{ {'manual':'added by hand','upload':'from file','ai':'AI suggested'}[c.source] }}</div></td>
+      <td class="n">{{ '%g'|format(c.qty) }} {{ c.unit or '' }}</td>
+      <td><select name="template" form="f{{ c.id }}">{% for t in templates %}<option value="{{ t.id }}" {{ 'selected' if t.id == c.template }}>{{ t.name }}</option>{% endfor %}</select></td>
+      <td><select name="item_key" form="f{{ c.id }}"><option value="">Not matched</option>{% for k, label in items %}<option value="{{ k }}" {{ 'selected' if k == c.item_key }}>{{ label }}</option>{% endfor %}</select></td>
+      <td class="n">{% if c.tracked %}<b>{{ c.tracked.cur }} {{ c.tracked.latest|money }}</b><div class="muted small">{{ c.tracked.vendor }} · {{ c.tracked.date }}{% if c.tracked.change is not none %} · {{ c.tracked.change|pctpts }}{% endif %}</div>{% else %}<span class="muted">–</span>{% endif %}</td>
+      <td class="n" style="white-space:nowrap">
+        <form id="f{{ c.id }}" method="post" action="{{ url_for('work.component_update', pid=p.id, cid=c.id) }}" style="display:inline"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn sm">Save</button></form>
+        {% if c.tracked %}<a class="btn sm primary" href="{{ url_for('work.talking_points', pid=p.id, cid=c.id) }}">Talking points</a>{% endif %}
+        <form method="post" action="{{ url_for('work.component_delete', pid=p.id, cid=c.id) }}" style="display:inline"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="btn sm danger" aria-label="Remove">✕</button></form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+<p class="note">Template and Zoho item were chosen automatically from the component's name. Change them and press Save if they are wrong. "Talking points" appears once a component is matched to a Zoho item.</p>
+{% else %}
+<div class="card muted">No components yet. Add some above.</div>
+{% endif %}
+{% endblock %}

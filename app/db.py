@@ -37,6 +37,33 @@ CREATE TABLE IF NOT EXISTS bill_lines (
     quantity REAL
 );
 CREATE INDEX IF NOT EXISTS idx_lines_mobile ON bill_lines(mobile);
+CREATE TABLE IF NOT EXISTS products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    mobile TEXT NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS components (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER NOT NULL,
+    mobile TEXT NOT NULL,
+    name TEXT NOT NULL,
+    qty REAL NOT NULL DEFAULT 1,
+    unit TEXT,
+    template TEXT NOT NULL DEFAULT 'other',
+    source TEXT NOT NULL,           -- manual | upload | ai
+    item_key TEXT,                  -- matched Zoho product key (item id | currency)
+    match_score REAL
+);
+CREATE INDEX IF NOT EXISTS idx_components_product ON components(product_id);
+CREATE TABLE IF NOT EXISTS driver_points (
+    driver TEXT NOT NULL,
+    mobile TEXT NOT NULL DEFAULT '',  -- '' = shared public series, otherwise the user's own benchmark
+    date TEXT NOT NULL,
+    value REAL NOT NULL,
+    PRIMARY KEY (driver, mobile, date)
+);
 """
 
 

@@ -13,6 +13,8 @@
   <nav>
     <a href="{{ url_for('connect') }}">Connect</a>
     <a href="{{ url_for('dashboard') }}">Purchase rates</a>
+    <a href="{{ url_for('work.products') }}">Products</a>
+    <a href="{{ url_for('work.drivers_page') }}">Cost drivers</a>
   </nav>
   <form method="post" action="{{ url_for('logout') }}" class="who">
     <input type="hidden" name="csrf" value="{{ csrf_token }}">

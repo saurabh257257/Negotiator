@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Products · Negotiator{% endblock %}
+{% block body %}
+<h1>Products</h1>
+<p class="muted">Define the products you build and the components that go into them. Each component is matched to what you buy in Zoho so its real vendor rates are tracked, and gets a cost-driver template for negotiation talking points.</p>
+
+<section class="card">
+  <h3>New product</h3>
+  <form method="post" action="{{ url_for('work.product_create') }}" class="row">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <div><label for="pn">Product name</label><input id="pn" name="name" placeholder="e.g. 48V 100Ah LFP battery pack" required maxlength="120" style="min-width:300px"></div>
+    <div class="grow"><label for="pd">Description (optional)</label><input id="pd" name="description" placeholder="Used by AI when generating components" maxlength="1000"></div>
+    <button class="btn primary">Create</button>
+  </form>
+</section>
+
+{% if products %}
+<div class="card xscroll"><table>
+  <thead><tr><th>Product</th><th class="n">Components</th><th class="n">Matched to Zoho</th><th></th></tr></thead>
+  <tbody>
+  {% for p in products %}
+    <tr class="click" onclick="location='{{ url_for('work.product', pid=p.id) }}'">
+      <td><b>{{ p.name }}</b><div class="muted small">{{ p.description or '' }}</div></td>
+      <td class="n">{{ p.n }}</td><td class="n">{{ p.matched }}</td>
+      <td class="n"><a href="{{ url_for('work.product', pid=p.id) }}">Open</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}
+<div class="card muted">No products yet. Create one above.</div>
+{% endif %}
+{% endblock %}
