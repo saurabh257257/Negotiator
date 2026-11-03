@@ -26,6 +26,7 @@
 <section class="card">
   <div class="row spread"><h3 style="margin:0">Talking points {% if source == 'ai' %}<span class="pill ok">AI-written</span>{% else %}<span class="pill soon">template-written</span>{% endif %}</h3>
     <button class="btn sm" id="copy">Copy</button></div>
+  {% if note %}<div class="flash info">AI wording was not used: {{ note }}. Showing the template-written version of the same numbers.</div>{% endif %}
   <ol id="points" class="points">{% for t in points %}<li>{{ t }}</li>{% endfor %}</ol>
   <p class="note">The numbers are computed from your Zoho purchases and the cost-driver series. They are estimates from public indicators, not the vendor's actual costs.</p>
 </section>

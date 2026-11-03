@@ -105,11 +105,15 @@ def deterministic_points(f: dict) -> list[str]:
     return pts
 
 
-def talking_points(f: dict) -> tuple[list[str], str]:
-    """Return (points, source) where source is 'ai' or 'rules'."""
-    if f["coverage"] > 0 and ai.configured():
-        try:
-            return ai.talking_points(f), "ai"
-        except ai.AIError:
-            pass
-    return deterministic_points(f), "rules"
+def talking_points(f: dict) -> tuple[list[str], str, str | None]:
+    """Return (points, source, note). source is 'ai' or 'rules'; note says why AI text was not used."""
+    note = None
+    if f["coverage"] > 0:
+        if ai.configured():
+            try:
+                return ai.talking_points(f), "ai", None
+            except ai.AIError as exc:
+                note = str(exc)
+        else:
+            note = "AI is not configured (no ANTHROPIC_API_KEY)"
+    return deterministic_points(f), "rules", note

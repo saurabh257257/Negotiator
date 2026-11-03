@@ -197,11 +197,14 @@ class NegotiationTest(unittest.TestCase):
         seed_driver("lith", [("2026-06-01", 100), ("2026-10-20", 120)], "123")
         f = negotiation.build_facts(self.comp, self.tree, "123", vendor_id="v1", today="2026-10-20")
         with mock.patch.object(config, "ANTHROPIC_API_KEY", "k"), mock.patch.object(ai, "talking_points", return_value=["x"]):
-            self.assertEqual(negotiation.talking_points(f), (["x"], "ai"))
-        with mock.patch.object(config, "ANTHROPIC_API_KEY", "k"), mock.patch.object(ai, "talking_points", side_effect=ai.AIError("no")):
-            self.assertEqual(negotiation.talking_points(f)[1], "rules")
+            self.assertEqual(negotiation.talking_points(f), (["x"], "ai", None))
+        with mock.patch.object(config, "ANTHROPIC_API_KEY", "k"), mock.patch.object(ai, "talking_points", side_effect=ai.AIError("credit too low")):
+            _, source, note = negotiation.talking_points(f)
+            self.assertEqual((source, note), ("rules", "credit too low"))      # the reason is reported, not hidden
         with mock.patch.object(config, "ANTHROPIC_API_KEY", ""):
-            self.assertEqual(negotiation.talking_points(f)[1], "rules")
+            _, source, note = negotiation.talking_points(f)
+            self.assertEqual(source, "rules")
+            self.assertIn("not configured", note)
 
 
 class RoutesTest(unittest.TestCase):
@@ -289,6 +292,7 @@ class RoutesTest(unittest.TestCase):
         with mock.patch.object(config, "ANTHROPIC_API_KEY", ""):
             html = self.c.get(url + "?vendor=v1").get_data(as_text=True)
         self.assertIn("template-written", html)
+        self.assertIn("AI wording was not used", html)                 # says why the AI text is missing
         self.assertIn("Lithium carbonate", html)
         # unmatched component explains what to do
         self.post(f"/products/{pid}/components/{cid}", template="cell", item_key="")

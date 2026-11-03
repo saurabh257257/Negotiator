@@ -195,9 +195,9 @@ def talking_points(pid, cid):
     p, c = _product(pid), _component(pid, cid)
     facts = negotiation.build_facts(c, _tree(session["mobile"]), session["mobile"], request.args.get("vendor"))
     if "error" in facts:
-        return render_template("talking.html", p=p, c=c, facts=None, error=facts["error"], points=[], source=None)
-    points, source = negotiation.talking_points(facts)
-    return render_template("talking.html", p=p, c=c, facts=facts, error=None, points=points, source=source)
+        return render_template("talking.html", p=p, c=c, facts=None, error=facts["error"], points=[], source=None, note=None)
+    points, source, note = negotiation.talking_points(facts)
+    return render_template("talking.html", p=p, c=c, facts=facts, error=None, points=points, source=source, note=note)
 
 
 # ------------------------------------------------------------------ price-gap alerts (E2)
