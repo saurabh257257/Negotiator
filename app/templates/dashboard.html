@@ -25,67 +25,148 @@
   <div class="card"><div class="muted">Period</div><div class="mid">{{ stats.first or '–' }} to {{ stats.last or '–' }}</div></div>
 </div>
 
-{% if not groups %}
+{% if not tree.vendors %}
   <div class="card">{% if running %}Your bills are being pulled. This page will refresh when done.{% else %}No bills found in the last 6 months. Check that your Zoho Books has bills in this period, then press Sync now.{% endif %}</div>
 {% else %}
-<form method="get" class="toolbar">
-  <input id="q" type="search" placeholder="Search product or vendor" autocomplete="off">
-  <label class="inline">Group by
-    <select name="by" onchange="this.form.submit()">
-      {% for k, label in group_by.items() %}<option value="{{ k }}" {{ 'selected' if k == by }}>{{ label }}</option>{% endfor %}
-    </select>
-  </label>
-</form>
-<p class="note">Zoho Books does not store a product category on bill lines, so products are grouped by the accounting account each bill line was booked to (for example "Raw Materials"). Rates are in the bill's own currency. "Avg" is weighted by quantity.</p>
-
-{% for g in groups %}
-<section class="group" data-group>
-  <h2>{{ g.name }} <span class="muted">· {{ g.products|length }} products · {{ g.n_vendors }} vendors</span></h2>
-  {% for p in g.products %}
-  <details class="prod" data-search="{{ (p.name ~ ' ' ~ p.vendors|map(attribute='vendor')|join(' '))|lower }}">
-    <summary>
-      <span class="pname">{{ p.name }}{% if p.unit %} <span class="muted">/ {{ p.unit }}</span>{% endif %}</span>
-      <span class="muted">{{ p.vendors|length }} vendor{{ '' if p.vendors|length == 1 else 's' }} · {{ p.n_purchases }} purchase{{ '' if p.n_purchases == 1 else 's' }}</span>
-      {% if p.spread > 0.05 %}<span class="pill warn" title="Highest vendor's latest rate vs the lowest, same currency">{{ '%.0f'|format(p.spread) }}% spread between vendors</span>{% endif %}
-    </summary>
-    <div class="xscroll">
-    <table>
-      <thead><tr><th>Vendor</th><th class="n">Purchases</th><th class="n">Latest rate</th><th class="n">Avg</th><th class="n">Min – Max</th><th class="n">Change</th><th>Trend</th></tr></thead>
-      <tbody>
-      {% for v in p.vendors %}
-        <tr>
-          <td><b>{{ v.vendor }}</b> {% if v.best %}<span class="pill ok">lowest</span>{% endif %}{% if v.spread_pct and not v.best %}<span class="pill warn">+{{ '%.0f'|format(v.spread_pct) }}%</span>{% endif %}</td>
-          <td class="n">{{ v.count }}</td>
-          <td class="n"><b>{{ v.currency }} {{ v.latest_rate|money }}</b><div class="muted small">{{ v.latest_date }}</div></td>
-          <td class="n">{{ v.avg|money }}</td>
-          <td class="n">{{ v.min|money }} – {{ v.max|money }}</td>
-          <td class="n {{ 'up' if v.change_pct and v.change_pct > 0.5 else 'down' if v.change_pct and v.change_pct < -0.5 }}">{% if v.change_pct is not none %}{{ '%+.1f'|format(v.change_pct) }}%{% else %}–{% endif %}</td>
-          <td class="trend">{{ sparkline(v.purchases|map(attribute='rate')|list) }}</td>
-        </tr>
-        <tr class="hist"><td colspan="7">
-          <details><summary class="muted small">Purchase history ({{ v.count }})</summary>
-            <table class="inner"><thead><tr><th>Date</th><th>Bill</th><th class="n">Rate</th><th class="n">Qty</th></tr></thead><tbody>
-            {% for h in v.purchases|reverse %}<tr><td>{{ h.date }}</td><td>{{ h.bill }}</td><td class="n">{{ h.rate|money }}</td><td class="n">{{ '%g'|format(h.qty) }}</td></tr>{% endfor %}
-            </tbody></table>
-          </details>
-        </td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
-    </div>
-  </details>
-  {% endfor %}
-</section>
-{% endfor %}
+<div class="split">
+  <aside class="tree card" aria-label="Vendors">
+    <input id="q" type="search" placeholder="Search vendor or product" autocomplete="off">
+    <div id="tree"></div>
+  </aside>
+  <section id="detail" aria-live="polite"></section>
+</div>
+<p class="note">Zoho Books does not store a product category on bill lines, so the category shown is the accounting account each bill line was booked to. Rates are in the bill's own currency and are never compared across currencies. "Avg" is weighted by quantity.</p>
+<script id="data" type="application/json">{{ tree|tojson }}</script>
 {% endif %}
 
 <script>
-const q = document.getElementById('q');
-if (q) q.addEventListener('input', () => {
-  const t = q.value.trim().toLowerCase();
-  document.querySelectorAll('.prod').forEach(p => { p.hidden = t && !p.dataset.search.includes(t); if (t && !p.hidden) p.open = true; });
-  document.querySelectorAll('[data-group]').forEach(g => { g.hidden = ![...g.querySelectorAll('.prod')].some(p => !p.hidden); });
+{% if tree.vendors %}
+const DATA = JSON.parse(document.getElementById('data').textContent);
+const V = Object.fromEntries(DATA.vendors.map(v => [v.id, v]));
+const P = DATA.products;
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = x => Number(x).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const pct = x => x == null ? '–' : (x > 0 ? '+' : '') + x.toFixed(1) + '%';
+const chgClass = x => x != null && x > 0.5 ? 'up' : x != null && x < -0.5 ? 'down' : '';
+let sel = {v: null, p: null}, open = new Set(), query = '';
+
+function spark(ps, w = 90, h = 22) {
+  const r = ps.map(p => p[2]);
+  if (r.length < 2) return '';
+  const lo = Math.min(...r), span = (Math.max(...r) - lo) || 1;
+  const pts = r.map((v, i) => (i / (r.length - 1) * w).toFixed(1) + ',' + (h - 2 - (v - lo) / span * (h - 4)).toFixed(1)).join(' ');
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}"><polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>`;
+}
+function tag(s) {
+  if (s.best) return '<span class="pill ok">lowest</span>';
+  if (s.vs_lowest != null) return `<span class="pill warn">+${s.vs_lowest.toFixed(0)}% vs lowest</span>`;
+  return '<span class="muted small">only vendor</span>';
+}
+
+/* ---------- left tree ---------- */
+function renderTree() {
+  const t = query.toLowerCase();
+  let html = '';
+  for (const v of DATA.vendors) {
+    const nameHit = v.name.toLowerCase().includes(t);
+    const prods = v.products.filter(k => !t || nameHit || P[k].name.toLowerCase().includes(t));
+    if (t && !nameHit && !prods.length) continue;
+    const isOpen = open.has(v.id) || (t && prods.length);
+    html += `<div class="vnode"><div class="vrow ${sel.v === v.id && !sel.p ? 'on' : ''}" data-v="${esc(v.id)}">
+      <button class="caret" data-toggle="${esc(v.id)}" aria-label="Expand">${isOpen ? '▾' : '▸'}</button>
+      <span class="vname">${esc(v.name)}</span><span class="count">${v.products.length}</span></div>`;
+    if (isOpen) {
+      html += '<div class="branch">' + prods.map(k => {
+        const s = P[k].vendors[v.id];
+        return `<div class="prow ${sel.v === v.id && sel.p === k ? 'on' : ''}" data-v="${esc(v.id)}" data-p="${esc(k)}">
+          <span class="pn">${esc(P[k].name)}</span><span class="pr muted small">${esc(P[k].cur)} ${num(s.latest)}</span></div>`;
+      }).join('') + '</div>';
+    }
+    html += '</div>';
+  }
+  document.getElementById('tree').innerHTML = html || '<p class="muted small" style="padding:8px">No match.</p>';
+}
+
+/* ---------- right detail ---------- */
+function vendorDetail(v) {
+  const spend = Object.entries(v.spend).map(([c, a]) => `${esc(c)} ${num(a)}`).join(' · ');
+  const rows = v.products.map(k => {
+    const p = P[k], s = p.vendors[v.id];
+    return `<tr class="click" data-v="${esc(v.id)}" data-p="${esc(k)}">
+      <td><b>${esc(p.name)}</b>${p.unit ? ` <span class="muted small">/ ${esc(p.unit)}</span>` : ''}<div class="muted small">${esc(p.cat)}</div></td>
+      <td class="n">${s.count}</td>
+      <td class="n"><b>${esc(p.cur)} ${num(s.latest)}</b><div class="muted small">${esc(s.latest_date)}</div></td>
+      <td class="n">${num(s.avg)}</td><td class="n">${num(s.min)} – ${num(s.max)}</td>
+      <td class="n ${chgClass(s.change)}">${pct(s.change)}</td><td class="trend">${spark(s.purchases)}</td><td>${tag(s)}</td></tr>`;
+  }).join('');
+  return `<div class="card"><h2>${esc(v.name)}</h2>
+    <p class="muted">${v.products.length} product${v.products.length === 1 ? '' : 's'} · ${v.purchases} purchase line${v.purchases === 1 ? '' : 's'} · spend ${spend}</p>
+    <div class="xscroll"><table><thead><tr><th>Product</th><th class="n">Purchases</th><th class="n">Latest rate</th><th class="n">Avg</th><th class="n">Min – Max</th><th class="n">Change</th><th>Trend</th><th>vs other vendors</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="note">Click a product to see its purchase history and how other vendors price it.</p></div>`;
+}
+
+function chart(pkey, vid) {
+  const p = P[pkey], W = 640, H = 220, pl = 52, pr = 12, pt = 12, pb = 26;
+  const all = Object.entries(p.vendors).flatMap(([id, s]) => s.purchases.map(x => ({id, t: Date.parse(x[0]), r: x[2], d: x[0]})));
+  let lo = Math.min(...all.map(a => a.r)), hi = Math.max(...all.map(a => a.r));
+  const pad = (hi - lo) * .12 || hi * .05 || 1; lo -= pad; hi += pad;
+  const t0 = Math.min(...all.map(a => a.t)), t1 = Math.max(...all.map(a => a.t)), ts = (t1 - t0) || 1;
+  const X = t => pl + (W - pl - pr) * (t - t0) / ts, Y = r => pt + (H - pt - pb) * (1 - (r - lo) / (hi - lo));
+  let g = '';
+  for (let k = 0; k <= 4; k++) { const v = lo + (hi - lo) * k / 4, y = Y(v);
+    g += `<line x1="${pl}" x2="${W - pr}" y1="${y}" y2="${y}" stroke="var(--border)"/><text x="${pl - 6}" y="${y + 4}" text-anchor="end">${num(v)}</text>`; }
+  [t0, t0 + ts / 2, t1].forEach((t, i) => g += `<text x="${X(t)}" y="${H - 7}" text-anchor="${i === 0 ? 'start' : i === 2 ? 'end' : 'middle'}">${new Date(t).toISOString().slice(0, 10)}</text>`);
+  const order = Object.keys(p.vendors).sort((a, b) => (a === vid) - (b === vid)); // selected vendor drawn last, on top
+  const lines = order.map(id => {
+    const cur = id === vid, pts = p.vendors[id].purchases.map(x => [X(Date.parse(x[0])), Y(x[2])]);
+    const d = pts.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join(' ');
+    return `<path d="${d}" fill="none" stroke="${cur ? 'var(--accent)' : 'var(--muted)'}" stroke-width="${cur ? 2.6 : 1.5}" ${cur ? '' : 'stroke-dasharray="5 4"'} opacity="${cur ? 1 : .8}"/>` +
+      pts.map((q, i) => `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="${cur ? 3.5 : 2.5}" fill="${cur ? 'var(--accent)' : 'var(--muted)'}"><title>${esc(V[id].name)}: ${num(p.vendors[id].purchases[i][2])} on ${esc(p.vendors[id].purchases[i][0])}</title></circle>`).join('');
+  }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Rate history">${g}${lines}</svg>`;
+}
+
+function productDetail(v, k) {
+  const p = P[k], s = p.vendors[v.id], others = Object.entries(p.vendors).filter(([id]) => id !== v.id);
+  const hist = [...s.purchases].reverse().map(h => `<tr><td>${esc(h[0])}</td><td>${esc(h[1])}</td><td class="n">${num(h[2])}</td><td class="n">${+h[3].toFixed(3)}</td><td class="n">${num(h[2] * h[3])}</td></tr>`).join('');
+  const peerRows = others.map(([id, o]) => `<tr class="click" data-v="${esc(id)}" data-p="${esc(k)}"><td><b>${esc(V[id].name)}</b></td><td class="n">${o.count}</td><td class="n"><b>${esc(p.cur)} ${num(o.latest)}</b><div class="muted small">${esc(o.latest_date)}</div></td><td class="n">${num(o.avg)}</td><td>${tag(o)}</td></tr>`).join('');
+  const legend = Object.keys(p.vendors).length > 1 ? `<div class="legend"><span><b style="background:var(--accent)"></b>${esc(v.name)}</span><span><b class="dash"></b>other vendors</span></div>` : '';
+  return `<div class="crumb"><a href="#" data-v="${esc(v.id)}">${esc(v.name)}</a> › ${esc(p.name)}</div>
+    <div class="card"><div class="row spread"><div><h2>${esc(p.name)}${p.unit ? ` <span class="muted small">/ ${esc(p.unit)}</span>` : ''}</h2><div class="muted">${esc(v.name)} · ${esc(p.cat)}</div></div>${tag(s)}</div>
+      <div class="tiles mini">
+        <div><div class="muted small">Latest rate</div><div class="big2">${esc(p.cur)} ${num(s.latest)}</div><div class="muted small">${esc(s.latest_date)}</div></div>
+        <div><div class="muted small">Average (qty-weighted)</div><div class="big2">${num(s.avg)}</div></div>
+        <div><div class="muted small">Min – Max</div><div class="big2">${num(s.min)} – ${num(s.max)}</div></div>
+        <div><div class="muted small">Change over period</div><div class="big2 ${chgClass(s.change)}">${pct(s.change)}</div></div>
+      </div></div>
+    <div class="card"><h3>Rate history${others.length ? ' (all vendors)' : ''}</h3>${chart(k, v.id)}${legend}</div>
+    <div class="card"><h3>Purchases from ${esc(v.name)}</h3><div class="xscroll"><table><thead><tr><th>Date</th><th>Bill</th><th class="n">Rate</th><th class="n">Qty</th><th class="n">Amount</th></tr></thead><tbody>${hist}</tbody></table></div></div>
+    ${others.length ? `<div class="card"><h3>Other vendors for this product</h3><div class="xscroll"><table><thead><tr><th>Vendor</th><th class="n">Purchases</th><th class="n">Latest rate</th><th class="n">Avg</th><th>vs lowest</th></tr></thead><tbody>${peerRows}</tbody></table></div></div>` : ''}`;
+}
+
+function renderDetail() {
+  const v = V[sel.v];
+  document.getElementById('detail').innerHTML = sel.p && P[sel.p] && P[sel.p].vendors[sel.v] ? productDetail(v, sel.p) : vendorDetail(v);
+}
+function select(v, p) {
+  if (!V[v]) v = DATA.vendors[0].id;
+  sel = {v, p: p || null}; open.add(v);
+  history.replaceState(null, '', '#v=' + encodeURIComponent(v) + (p ? '&p=' + encodeURIComponent(p) : ''));
+  renderTree(); renderDetail();
+}
+
+document.addEventListener('click', e => {
+  const tg = e.target.closest('[data-toggle]');
+  if (tg) { e.stopPropagation(); const id = tg.dataset.toggle; open.has(id) ? open.delete(id) : open.add(id); renderTree(); return; }
+  const el = e.target.closest('[data-v]');
+  if (el && document.getElementById('detail')) { e.preventDefault(); select(el.dataset.v, el.dataset.p); window.scrollTo({top: document.querySelector('.split').offsetTop - 10}); }
 });
+document.getElementById('q').addEventListener('input', e => { query = e.target.value.trim(); renderTree(); });
+
+const hp = new URLSearchParams(location.hash.slice(1));
+select(hp.get('v') || DATA.vendors[0].id, hp.get('p'));
+{% endif %}
+
 {% if running %}
 (function poll() {
   fetch('{{ url_for("sync_status") }}').then(r => r.json()).then(s => {

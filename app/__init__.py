@@ -35,8 +35,6 @@ def create_app():
     def money(value):
         return f"{value:,.2f}"
 
-    app.jinja_env.globals["sparkline"] = analysis.sparkline
-
     def login_required(view):
         @wraps(view)
         def wrapper(*a, **kw):
@@ -170,20 +168,16 @@ def create_app():
         conn_row = connection()
         if not conn_row:
             return redirect(url_for("connect"))
-        by = request.args.get("by", "account")
-        if by not in analysis.GROUP_BY:
-            by = "account"
         with db.connect() as conn:
             rows = [dict(r) for r in conn.execute("SELECT * FROM bill_lines WHERE mobile=?", (session["mobile"],))]
-        groups = analysis.build_groups(rows, by)
+        tree = analysis.build_tree(rows)
         stats = {
             "bills": len({r["bill_id"] for r in rows}), "lines": len(rows),
-            "vendors": len({r["vendor_id"] or r["vendor_name"] for r in rows}),
-            "products": sum(len(g["products"]) for g in groups),
+            "vendors": len(tree["vendors"]), "products": len(tree["products"]),
             "first": min((r["bill_date"] for r in rows), default=None),
             "last": max((r["bill_date"] for r in rows), default=None),
         }
-        return render_template("dashboard.html", conn=conn_row, groups=groups, stats=stats, by=by,
-                               group_by=analysis.GROUP_BY, running=zoho.sync_running(session["mobile"]))
+        return render_template("dashboard.html", conn=conn_row, tree=tree, stats=stats,
+                               running=zoho.sync_running(session["mobile"]))
 
     return app

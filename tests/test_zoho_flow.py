@@ -1,5 +1,6 @@
 """End-to-end test of login -> connect -> OAuth callback -> bills sync -> dashboard,
 using a fake Zoho (no network, no real credentials)."""
+import json
 import os
 import sys
 import tempfile
@@ -169,11 +170,12 @@ class FlowTest(unittest.TestCase):
         self.assertEqual(tok["org_name"], "Volta Energy")  # the default organization was chosen
 
         html = self.c.get("/dashboard").get_data(as_text=True)
-        self.assertIn("Raw Materials", html)
-        self.assertIn("LFP cell 280Ah", html)
-        self.assertIn("Shenzhen PowerCell", html)
-        self.assertIn("Guangzhou EnerCell", html)
-        self.assertIn("lowest", html)
+        data = json.loads(html.split('<script id="data" type="application/json">')[1].split("</script>")[0])
+        self.assertEqual([v["name"] for v in data["vendors"]],
+                         ["Guangzhou EnerCell", "Pune PolyMould", "Shenzhen PowerCell"])
+        cell = data["products"]["i1|USD"]
+        self.assertEqual(cell["cat"], "Raw Materials")
+        self.assertEqual(set(cell["vendors"]), {"v1", "v2"})  # both vendors sell the same product
 
         # disconnect removes data and revokes the token at Zoho
         self.c.post("/disconnect", data={"csrf": self.token("/connect")})
@@ -184,30 +186,38 @@ class FlowTest(unittest.TestCase):
 
 
 class AnalysisTest(unittest.TestCase):
-    def test_grouping_and_stats(self):
-        def row(d, vendor, rate, qty, cur="USD", acct="Raw Materials"):
-            return dict(bill_date=d, vendor_id=vendor, vendor_name=vendor, currency=cur, item_id="i1",
-                        item_name="Cell", unit="pcs", rate=rate, quantity=qty, bill_number="x",
-                        account_name=acct, product_type="goods")
-        rows = [row("2026-01-01", "A", 30, 100), row("2026-02-01", "A", 36, 100), row("2026-02-05", "B", 33, 50)]
-        groups = analysis.build_groups(rows)
-        self.assertEqual([g["name"] for g in groups], ["Raw Materials"])
-        vendors = {v["vendor"]: v for v in groups[0]["products"][0]["vendors"]}
-        a, b = vendors["A"], vendors["B"]
-        self.assertAlmostEqual(a["avg"], 33.0)
-        self.assertAlmostEqual(a["change_pct"], 20.0)
-        self.assertTrue(b["best"])
-        self.assertAlmostEqual(a["spread_pct"], (36 / 33 - 1) * 100)
-        self.assertIsNone(b["change_pct"])
+    @staticmethod
+    def row(d, vendor, rate, qty=1, cur="USD", acct="Raw Materials", item="i1"):
+        return dict(bill_date=d, vendor_id=vendor, vendor_name="Vendor " + vendor, currency=cur, item_id=item,
+                    item_name="Cell", unit="pcs", rate=rate, quantity=qty, bill_number="x",
+                    account_name=acct, product_type="goods")
+
+    def test_vendor_tree_and_stats(self):
+        r = self.row
+        tree = analysis.build_tree([r("2026-02-01", "A", 36, 100), r("2026-01-01", "A", 30, 100),
+                                    r("2026-02-05", "B", 33, 50), r("2026-02-06", "A", 5, 1, item="i2")])
+        self.assertEqual([v["name"] for v in tree["vendors"]], ["Vendor A", "Vendor B"])
+        a = next(v for v in tree["vendors"] if v["id"] == "A")
+        self.assertEqual(len(a["products"]), 2)                      # A's product branches
+        s = tree["products"]["i1|USD"]["vendors"]
+        self.assertEqual([p[0] for p in s["A"]["purchases"]], ["2026-01-01", "2026-02-01"])  # sorted by date
+        self.assertAlmostEqual(s["A"]["avg"], 33.0)                  # quantity-weighted
+        self.assertAlmostEqual(s["A"]["change"], 20.0)
+        self.assertIsNone(s["B"]["change"])                          # single purchase
+        self.assertTrue(s["B"]["best"])
+        self.assertAlmostEqual(s["A"]["vs_lowest"], (36 / 33 - 1) * 100)
+        self.assertEqual(a["spend"], {"USD": 36 * 100 + 30 * 100 + 5})
 
     def test_different_currencies_are_not_compared(self):
-        def row(vendor, cur, rate):
-            return dict(bill_date="2026-01-01", vendor_id=vendor, vendor_name=vendor, currency=cur, item_id="i1",
-                        item_name="Cell", unit="", rate=rate, quantity=1, bill_number="x",
-                        account_name="", product_type="")
-        groups = analysis.build_groups([row("A", "USD", 10), row("B", "INR", 800)])
-        self.assertEqual(groups[0]["name"], "Uncategorized")
-        self.assertTrue(all(v["spread_pct"] is None for v in groups[0]["products"][0]["vendors"]))
+        r = self.row
+        tree = analysis.build_tree([r("2026-01-01", "A", 10), r("2026-01-01", "B", 800, cur="INR")])
+        self.assertEqual(set(tree["products"]), {"i1|USD", "i1|INR"})
+        for p in tree["products"].values():
+            self.assertTrue(all(s["vs_lowest"] is None for s in p["vendors"].values()))
+
+    def test_missing_account_is_uncategorized(self):
+        tree = analysis.build_tree([self.row("2026-01-01", "A", 10, acct="")])
+        self.assertEqual(tree["products"]["i1|USD"]["cat"], "Uncategorized")
 
 
 if __name__ == "__main__":

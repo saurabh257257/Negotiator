@@ -9,16 +9,18 @@ Helps battery/EV manufacturers renegotiate vendor prices. See [PLAN.md](PLAN.md)
 2. **Connect page** with a Zoho Books connector. It lists the read-only permissions first, then sends the
    user to Zoho's own sign-in and consent page (OAuth 2.0). Negotiator never sees the Zoho password.
 3. **Bills sync**: pulls the last ~6 months of Zoho Books **bills** and their line items.
-4. **Purchase rates page**: groups by category, then product, then vendor, with each vendor's purchase
-   rates (latest, average weighted by quantity, min to max, change, trend, full history) and a flag when
-   vendors charge different rates for the same product.
+4. **Purchase rates page**: a vendor tree on the left, with each vendor expanding into its products.
+   Selecting a vendor shows all its products with purchase rates (latest, average weighted by quantity,
+   min to max, change, trend). Selecting a product shows its rate history chart, every purchase, and how
+   other vendors price the same product (flagged "lowest" or "+x% vs lowest"). Search covers vendors and
+   products.
 
 The Zoho pull is plain deterministic code. No AI runs on the server.
 
 ### Important: how "category" works
 Zoho Books does not store a product category on items or bill lines (that exists in Zoho Inventory only).
-Products are therefore grouped by the **accounting account** each bill line was booked to
-(for example "Raw Materials"), with "Product type" and "No grouping" as alternatives on the page.
+The category shown for each product is therefore the **accounting account** each bill line was booked to
+(for example "Raw Materials" or "Inventory Asset").
 
 ## Run it locally
 
